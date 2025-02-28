@@ -11,7 +11,7 @@ resource "aws_instance" "dns" {
     volume_type = "gp3"
   }
 
-  user_data = base64encode(file("${path.module}/dns_userdata.tpl"))
+  user_data = base64encode(file("${path.module}/template/dns.tpl"))
 
   tags = {
     Name = "okd-dns"
@@ -19,6 +19,7 @@ resource "aws_instance" "dns" {
 }
 
 resource "aws_instance" "lb" {
+  depends_on = [ aws_instance.dns ]
   ami           = var.al2023_ami
   instance_type = "t3.small"
   subnet_id     = var.public_subnet_id
@@ -31,7 +32,7 @@ resource "aws_instance" "lb" {
     volume_type = "gp3"
   }
 
-  user_data = base64encode(templatefile("${path.module}/lb_userdata.tpl", {}))
+  user_data = base64encode(file("${path.module}/template/lb.tpl"))
 
   tags = {
     Name = "okd-lb"
@@ -39,6 +40,7 @@ resource "aws_instance" "lb" {
 }
 
 resource "aws_instance" "manager" {
+  depends_on = [ aws_instance.dns ]
   ami           = var.al2023_ami
   instance_type = "t3.small"
   subnet_id     = var.public_subnet_id
@@ -46,7 +48,7 @@ resource "aws_instance" "manager" {
   security_groups = [ var.security_group ]
   key_name = var.key_name
 
-  user_data = base64encode(templatefile("${path.module}/mgr_userdata.tpl", {
+  user_data = base64encode(templatefile("${path.module}/template/mgr.tpl", {
     pullSecret = var.pullSecret
   }))
 
@@ -68,6 +70,8 @@ resource "aws_instance" "bootstrap" {
   security_groups = [ var.security_group ]
   key_name = var.key_name
 
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
+
   root_block_device {
     volume_size = 100
     volume_type = "gp3"
@@ -76,6 +80,8 @@ resource "aws_instance" "bootstrap" {
   tags = {
     Name = "bootstrap"
   }
+
+  depends_on = [ aws_instance.dns , null_resource.finish_mgr ]
 }
 
 resource "aws_instance" "control-plane" {
@@ -87,6 +93,8 @@ resource "aws_instance" "control-plane" {
   security_groups = [ var.security_group ]
   key_name = var.key_name
 
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/master.ign\"}},\"version\":\"3.1.0\"}}"
+
   root_block_device {
     volume_size = 100
     volume_type = "gp3"
@@ -95,6 +103,9 @@ resource "aws_instance" "control-plane" {
   tags = {
     Name = "control-plane-${count.index + 1}"
   }
+  
+  depends_on = [ aws_instance.dns , null_resource.finish_mgr ]
+
 }
 
 # resource "aws_instance" "worker" {
@@ -115,3 +126,21 @@ resource "aws_instance" "control-plane" {
 #     Name = "worker-${count.index + 1}"
 #   }
 # }
+
+resource "null_resource" "finish_mgr" {
+  depends_on = [aws_instance.manager]
+
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("${path.module}/privateKEY")
+    host        = aws_instance.manager.public_ip
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "while [ ! -f /tmp/user_data_complete ]; do sleep 10; done",
+      "echo 'User data script completed'"
+    ]
+  }
+}

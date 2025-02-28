@@ -48,3 +48,7 @@ sudo chown root.named /var/named/cluster.local.zone
 
 sudo systemctl enable --now named
 sudo systemctl restart named
+
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+
+sudo networkctl renew $INTERFACE

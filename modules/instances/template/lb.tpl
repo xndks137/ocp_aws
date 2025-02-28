@@ -3,6 +3,9 @@
 sudo dnf -y install haproxy 
 sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.old
 
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+sudo networkctl renew $INTERFACE
+
 # 로드밸런스 설정정
 sudo cat << EOF > /etc/haproxy/haproxy.cfg
 global
@@ -76,3 +79,4 @@ EOF
 
 sudo systemctl enable --now haproxy
 sudo systemctl restart haproxy
+

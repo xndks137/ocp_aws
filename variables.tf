@@ -58,4 +58,6 @@ variable "key_name" {
   description = "Instance key pair"
 }
 
-variable "pullSecret" {}
+variable "pullSecret" {
+ type = string
+}

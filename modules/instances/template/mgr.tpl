@@ -24,6 +24,10 @@ EOF
 sudo systemctl enable --now nginx
 sudo systemctl restart nginx
 
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+
+sudo networkctl renew $INTERFACE
+
 # OKD 설치 준비비
 mkdir okd4
 cd okd4
@@ -62,8 +66,7 @@ platform:
 pullSecret: '${pullSecret}'
 EOF
 
-(echo -n "sshKey: '"; sudo cat ~/.ssh/id_ed25519.pub) >> ignition/install-config.yaml
-sudo cat ~/.ssh/id_ed25519.pub >> ignition/install-config.yaml
+echo -n "sshKey: '$(cat ~/.ssh/id_ed25519.pub)'" ; >> ignition/install-config.yaml
 cp ignition/install-config.yaml install-config.yaml.bak
 ./openshift-install create manifests --dir ignition
 ./openshift-install create ignition-configs --dir ignition
@@ -71,3 +74,4 @@ sudo mkdir /usr/share/nginx/html/files
 sudo cp ./ignition/{bootstrap.ign,master.ign,worker.ign} /usr/share/nginx/html/files
 sudo chmod 644 /usr/share/nginx/html/files/{bootstrap.ign,master.ign,worker.ign}
 
+touch /tmp/user_data_complete
