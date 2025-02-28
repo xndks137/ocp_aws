@@ -56,75 +56,179 @@ resource "aws_vpc_dhcp_options_association" "okd_dns_resolver" {
   dhcp_options_id = aws_vpc_dhcp_options.okd_dns_resolver.id
 }
 
-resource "aws_security_group" "master_sg" {
-  name        = "okd_master_sg"
-  description = "Allow Ports for OKD master"
+resource "aws_security_group" "pub_sg" {
+  name        = "pub_sg"
+  description = "Allow specific ports for OKD master"
   vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name = "okd_master_sg"
+    Name = "pub_sg"
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "ssh" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 22
-  ip_protocol       = "tcp"
-  to_port           = 22
-}
-resource "aws_vpc_security_group_ingress_rule" "https" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 443
-  ip_protocol       = "tcp"
-  to_port           = 443
-}
-resource "aws_vpc_security_group_ingress_rule" "http" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 80
-  ip_protocol       = "tcp"
-  to_port           = 80
-}
-resource "aws_vpc_security_group_ingress_rule" "okd_6443" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 6443
-  ip_protocol       = "tcp"
-  to_port           = 6443
-}
-resource "aws_vpc_security_group_ingress_rule" "okd_22623" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 22623
-  ip_protocol       = "tcp"
-  to_port           = 22623
-}
-resource "aws_vpc_security_group_ingress_rule" "okd_1936" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 1936
-  ip_protocol       = "tcp"
-  to_port           = 1936
-}
-resource "aws_vpc_security_group_ingress_rule" "okd_8080" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 8080
-  ip_protocol       = "tcp"
-  to_port           = 8080
-}
-resource "aws_vpc_security_group_ingress_rule" "okd_53" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 53
-  ip_protocol       = "udp"
-  to_port           = 53
+resource "aws_security_group_rule" "pub_ingress_rules" {
+  type        = "ingress"
+  from_port   = each.value.port
+  to_port     = each.value.port
+  protocol    = each.value.protocol
+  cidr_blocks = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.pub_sg.id
+
+  for_each = {
+    ssh     = { port = 22, protocol = "tcp" }
+    https   = { port = 443, protocol = "tcp" }
+    http    = { port = 80, protocol = "tcp" }
+    okd_6443 = { port = 6443, protocol = "tcp" }
+    okd_22623 = { port = 22623, protocol = "tcp" }
+    okd_1936 = { port = 1936, protocol = "tcp" }
+    okd_8080 = { port = 8080, protocol = "tcp" }
+    okd_53   = { port = 53, protocol = "udp" }
+  }
 }
 
-resource "aws_vpc_security_group_egress_rule" "okd_sg_egress" {
-  security_group_id = aws_security_group.master_sg.id
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1" # semantically equivalent to all ports
+resource "aws_security_group_rule" "pub_egress_rule" {
+  type        = "egress"
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.pub_sg.id
 }
+
+# 부트스트랩 보안 그룹
+resource "aws_security_group" "bootstrap" {
+  name        = "bootstrap-sg"
+  description = "Cluster Bootstrap Security Group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 19531
+    to_port     = 19531
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "master" {
+  name_prefix = "master-sg-"
+  description = "Cluster Master Security Group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "icmp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 22623
+    to_port     = 22623
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+}
+
+resource "aws_security_group" "worker" {
+  name_prefix = "worker-sg-"
+  description = "Cluster Worker Security Group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "icmp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+}
+
+# 마스터 보안 그룹 규칙
+resource "aws_security_group_rule" "master_ingress_rules" {
+  for_each = {
+    etcd              = { from_port = 2379, to_port = 2380, protocol = "tcp" }
+    vxlan             = { from_port = 4789, to_port = 4789, protocol = "udp" }
+    geneve            = { from_port = 6081, to_port = 6081, protocol = "udp" }
+    ipsec_ike         = { from_port = 500, to_port = 500, protocol = "udp" }
+    ipsec_nat         = { from_port = 4500, to_port = 4500, protocol = "udp" }
+    ipsec_esp         = { from_port = -1, to_port = -1, protocol = "50" }
+    internal_tcp      = { from_port = 9000, to_port = 9999, protocol = "tcp" }
+    internal_udp      = { from_port = 9000, to_port = 9999, protocol = "udp" }
+    kube              = { from_port = 10250, to_port = 10259, protocol = "tcp" }
+    ingress_services  = { from_port = 30000, to_port = 32767, protocol = "tcp" }
+    ingress_services_udp = { from_port = 30000, to_port = 32767, protocol = "udp" }
+  }
+
+  type                     = "ingress"
+  from_port                = each.value.from_port
+  to_port                  = each.value.to_port
+  protocol                 = each.value.protocol
+  source_security_group_id = aws_security_group.master.id
+  security_group_id        = aws_security_group.master.id
+}
+
+# 워커 보안 그룹 규칙
+resource "aws_security_group_rule" "worker_ingress_rules" {
+  for_each = {
+    vxlan             = { from_port = 4789, to_port = 4789, protocol = "udp" }
+    geneve            = { from_port = 6081, to_port = 6081, protocol = "udp" }
+    ipsec_ike         = { from_port = 500, to_port = 500, protocol = "udp" }
+    ipsec_nat         = { from_port = 4500, to_port = 4500, protocol = "udp" }
+    ipsec_esp         = { from_port = -1, to_port = -1, protocol = "50" }
+    internal_tcp      = { from_port = 9000, to_port = 9999, protocol = "tcp" }
+    internal_udp      = { from_port = 9000, to_port = 9999, protocol = "udp" }
+    kube              = { from_port = 10250, to_port = 10250, protocol = "tcp" }
+    ingress_services  = { from_port = 30000, to_port = 32767, protocol = "tcp" }
+    ingress_services_udp = { from_port = 30000, to_port = 32767, protocol = "udp" }
+  }
+
+  type                     = "ingress"
+  from_port                = each.value.from_port
+  to_port                  = each.value.to_port
+  protocol                 = each.value.protocol
+  source_security_group_id = aws_security_group.worker.id
+  security_group_id        = aws_security_group.worker.id
+}
+
+resource "aws_eip" "nat_eip" {
+  vpc   = true
+
+  tags = {
+    Name = "NAT-EIP"
+  }
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public.id
+
+  tags = {
+    Name = "gw NAT"
+  }

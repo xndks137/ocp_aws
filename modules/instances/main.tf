@@ -3,7 +3,7 @@ resource "aws_instance" "dns" {
   instance_type = "t3.small"
   subnet_id     = var.public_subnet_id
   private_ip    = var.dns_ip
-  security_groups = [ var.security_group ]
+  security_groups = [ var.pub_sg ]
   key_name = var.key_name
 
   root_block_device {
@@ -24,7 +24,7 @@ resource "aws_instance" "lb" {
   instance_type = "t3.small"
   subnet_id     = var.public_subnet_id
   private_ip    = var.lb_ip
-  security_groups = [ var.security_group ]
+  security_groups = [ var.pub_sg ]
   key_name = var.key_name
 
   root_block_device {
@@ -45,7 +45,7 @@ resource "aws_instance" "manager" {
   instance_type = "t3.small"
   subnet_id     = var.public_subnet_id
   private_ip    = var.manager_ip
-  security_groups = [ var.security_group ]
+  security_groups = [ var.pub_sg ]
   key_name = var.key_name
 
   user_data = base64encode(templatefile("${path.module}/template/mgr.tpl", {
@@ -67,8 +67,9 @@ resource "aws_instance" "bootstrap" {
   instance_type = "t3.xlarge"
   subnet_id     = var.private_subnet_id
   private_ip    = var.bootstrap_ip
-  security_groups = [ var.security_group ]
+  security_groups = [ var.bootstrap_sg ]
   key_name = var.key_name
+  iam_instance_profile = var.bootstrap_iam
 
   user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
 
@@ -90,8 +91,9 @@ resource "aws_instance" "control-plane" {
   instance_type = "t3.xlarge"
   subnet_id     = var.private_subnet_id
   private_ip    = var.control_plane_ips[count.index]
-  security_groups = [ var.security_group ]
+  security_groups = [ var.master_sg ]
   key_name = var.key_name
+  iam_instance_profile = var.master_iam
 
   user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/master.ign\"}},\"version\":\"3.1.0\"}}"
 
@@ -114,13 +116,16 @@ resource "aws_instance" "control-plane" {
 #   instance_type = "t3.large"
 #   subnet_id     = var.private_subnet_id
 #   private_ip    = var.worker_ips[count.index]
-#   security_groups = [ var.security_group ]
+#   security_groups = [ var.worker_sg ]
 #   key_name = var.key_name
+#   iam_instance_profile = var.worker_iam
 
 #   root_block_device {
 #     volume_size = 100
 #     volume_type = "gp3"
 #   }
+
+#   user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/worker.ign\"}},\"version\":\"3.1.0\"}}"
 
 #   tags = {
 #     Name = "worker-${count.index + 1}"

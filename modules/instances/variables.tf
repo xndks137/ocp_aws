@@ -9,6 +9,12 @@ variable "control_plane_ips" {}
 variable "worker_ips" {}
 variable "fcos_ami" {}
 variable "al2023_ami" {}
-variable "security_group" {}
+variable "pub_sg" {}
+variable "bootstrap_sg" {}
+variable "master_sg" {}
+variable "worker_sg" {}
 variable "key_name" {}
 variable "pullSecret" {}
+variable "bootstrap_iam" {}
+variable "master_iam" {}
+variable "worker_iam" {}
