@@ -1,0 +1,14 @@
+variable "vpc_id" {}
+variable "public_subnet_id" {}
+variable "private_subnet_id" {}
+variable "manager_ip" {}
+variable "lb_ip" {}
+variable "dns_ip" {}
+variable "bootstrap_ip" {}
+variable "control_plane_ips" {}
+variable "worker_ips" {}
+variable "fcos_ami" {}
+variable "al2023_ami" {}
+variable "security_group" {}
+variable "key_name" {}
+variable "pullSecret" {}
