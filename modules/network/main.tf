@@ -37,15 +37,34 @@ resource "aws_route_table" "public_rt" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
+
   tags = {
     Name = "okd4-public-rt"
   }
 }
 
-resource "aws_route_table_association" "public_association" {
+resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public_rt.id
 }
+
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "okd4-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
 
 # resource "aws_vpc_dhcp_options" "okd_dns_resolver" {
 #   domain_name_servers = var.dns_servers
@@ -55,6 +74,7 @@ resource "aws_route_table_association" "public_association" {
 #   vpc_id          = aws_vpc.main.id
 #   dhcp_options_id = aws_vpc_dhcp_options.okd_dns_resolver.id
 # }
+
 
 resource "aws_security_group" "pub_sg" {
   name        = "pub_sg"
@@ -85,11 +105,11 @@ resource "aws_security_group_rule" "pub_ingress_rules" {
   #   okd_53   = { port = 53, protocol = "udp" }
   # }
 
-  type = "ingress"
-  from_port = 0
-  to_port = 0
-  protocol = "-1"
-  cidr_blocks = [ "0.0.0.0/9" ]
+  type        = "ingress"
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
   security_group_id = aws_security_group.pub_sg.id
 }
 

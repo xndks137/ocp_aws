@@ -46,34 +46,34 @@ frontend stats
 listen api-server-6443 
   bind *:6443
   mode tcp
-  server bootstrap bootstrap."${clustername}"."${zonename}":6443 check inter 1s backup 
-  server control-plane0 control-plane0."${clustername}"."${zonename}":6443 check inter 1s
-  server control-plane1 control-plane1."${clustername}"."${zonename}":6443 check inter 1s
-  server control-plane2 control-plane2."${clustername}"."${zonename}":6443 check inter 1s
+  server bootstrap bootstrap.${clustername}.${zonename}:6443 check inter 1s backup 
+  server control-plane0 control-plane0.${clustername}.${zonename}:6443 check inter 1s
+  server control-plane1 control-plane1.${clustername}.${zonename}:6443 check inter 1s
+  server control-plane2 control-plane2.${clustername}.${zonename}:6443 check inter 1s
 
 listen machine-config-server-22623 
   bind *:22623
   mode tcp
-  server bootstrap bootstrap."${clustername}"."${zonename}":22623 check inter 1s backup 
-  server control-plane0 control-plane0."${clustername}"."${zonename}":22623 check inter 1s
-  server control-plane1 control-plane1."${clustername}"."${zonename}":22623 check inter 1s
-  server control-plane2 control-plane2."${clustername}"."${zonename}":22623 check inter 1s
+  server bootstrap bootstrap.${clustername}.${zonename}:22623 check inter 1s backup 
+  server control-plane0 control-plane0.${clustername}.${zonename}:22623 check inter 1s
+  server control-plane1 control-plane1.${clustername}.${zonename}:22623 check inter 1s
+  server control-plane2 control-plane2.${clustername}.${zonename}:22623 check inter 1s
 
 listen ingress-router-443 
   bind *:443
   mode tcp
   balance source
-  server control-plane0 control-plane0."${clustername}"."${zonename}":443 check inter 1s
-  server control-plane1 control-plane1."${clustername}"."${zonename}":443 check inter 1s
-  server control-plane2 control-plane2."${clustername}"."${zonename}":443 check inter 1s
+  server control-plane0 control-plane0.${clustername}.${zonename}:443 check inter 1s
+  server control-plane1 control-plane1.${clustername}.${zonename}:443 check inter 1s
+  server control-plane2 control-plane2.${clustername}.${zonename}:443 check inter 1s
 
 listen ingress-router-80 
   bind *:80
   mode tcp
   balance source
-  server control-plane0 control-plane0."${clustername}"."${zonename}":80 check inter 1s
-  server control-plane1 control-plane1."${clustername}"."${zonename}":80 check inter 1s
-  server control-plane2 control-plane2."${clustername}"."${zonename}":80 check inter 1s
+  server control-plane0 control-plane0.${clustername}.${zonename}:80 check inter 1s
+  server control-plane1 control-plane1.${clustername}.${zonename}:80 check inter 1s
+  server control-plane2 control-plane2.${clustername}.${zonename}:80 check inter 1s
 
 EOF
 

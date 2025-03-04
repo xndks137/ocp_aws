@@ -38,9 +38,14 @@ variable "worker_ips" {
   default = ["192.168.128.50", "192.168.128.51"]
 }
 
-variable "ami_id" {
+variable "RHCOS" {
   description = "RHCOS ami ID"
   default = "ami-09cfc5a33f840ce70"
+}
+
+variable "AL2023" {
+  description = "Amazon Linux ami ID"
+  default = "ami-075e056c0f3d02523"
 }
 
 variable "dns_servers" {
@@ -60,4 +65,16 @@ variable "pullSecret" {
 variable "instance_type" {
   default = "m6i.xlarge"
   description = "Instance type for create EC2"
+}
+
+variable "zone_id" {
+  default = "Z00953263JPNGDD7UHSTQ"
+}
+
+variable "cluster_name" {
+  default = "okd4"
+}
+
+variable "zone_name" {
+  default = "xndks.xyz"
 }

@@ -36,8 +36,8 @@ wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/ope
 tar -xvf openshift-install-linux.tar.gz
 wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
 tar -xvf openshift-client-linux.tar.gz
-sudo oc kubectl /usr/local/bin
-rm -f openshift-install-linux.tar.gz README.md openshift-client-linux.tar.gz 
+sudo mv oc kubectl /usr/local/bin
+rm -f openshift-install-linux.tar.gz README.md openshift-client-linux.tar.gz
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 mkdir ignition
 cat << EOF > ignition/install-config.yaml
@@ -65,12 +65,15 @@ platform:
 pullSecret: '${pullSecret}'
 EOF
 
-echo -n "sshKey: '$(cat ~/.ssh/id_ed25519.pub)'" ; >> ignition/install-config.yaml
+echo -n "sshKey: '$(cat ~/.ssh/id_ed25519.pub)'" >> ignition/install-config.yaml
 cp ignition/install-config.yaml install-config.yaml.bak
 ./openshift-install create manifests --dir ignition
 ./openshift-install create ignition-configs --dir ignition
 sudo mkdir /usr/share/nginx/html/files
 sudo cp ./ignition/{bootstrap.ign,master.ign,worker.ign} /usr/share/nginx/html/files
 sudo chmod 644 /usr/share/nginx/html/files/{bootstrap.ign,master.ign,worker.ign}
+
+export KUBECONFIG=/okd4/ignition/auth/kubeconfig
+echo 'export KUBECONFIG=/okd4/ignition/auth/kubeconfig' >> ~/.bashrc
 
 touch /tmp/user_data_complete

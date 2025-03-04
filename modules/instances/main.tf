@@ -20,7 +20,7 @@
 
 resource "aws_instance" "lb" {
 
-  ami           = var.ami
+  ami           = var.AL2023
   instance_type = var.instance_type
   subnet_id     = var.public_subnet_id
   private_ip    = var.lb_ip
@@ -28,7 +28,7 @@ resource "aws_instance" "lb" {
   key_name = var.key_name
 
   root_block_device {
-    volume_size = 8
+    volume_size = 30
     volume_type = "gp3"
   }
 
@@ -44,7 +44,7 @@ resource "aws_instance" "lb" {
 
 resource "aws_instance" "manager" {
 
-  ami           = var.ami
+  ami           = var.AL2023
   instance_type = var.instance_type
   subnet_id     = var.public_subnet_id
   private_ip    = var.manager_ip
@@ -66,7 +66,7 @@ resource "aws_instance" "manager" {
 }
 
 resource "aws_instance" "bootstrap" {
-  ami           = var.ami
+  ami           = var.RHCOS
   instance_type = var.instance_type
   subnet_id     = var.private_subnet_id
   private_ip    = var.bootstrap_ip
@@ -74,7 +74,7 @@ resource "aws_instance" "bootstrap" {
   key_name = var.key_name
   iam_instance_profile = var.bootstrap_iam
 
-  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}:8080/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
 
   root_block_device {
     volume_size = 100
@@ -90,7 +90,7 @@ resource "aws_instance" "bootstrap" {
 
 resource "aws_instance" "control-plane" {
   count         = length(var.control_plane_ips)
-  ami           = var.ami
+  ami           = var.RHCOS
   instance_type = var.instance_type
   subnet_id     = var.private_subnet_id
   private_ip    = var.control_plane_ips[count.index]
@@ -98,7 +98,7 @@ resource "aws_instance" "control-plane" {
   key_name = var.key_name
   iam_instance_profile = var.master_iam
 
-  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/master.ign\"}},\"version\":\"3.1.0\"}}"
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}:8080/master.ign\"}},\"version\":\"3.1.0\"}}"
 
   root_block_device {
     volume_size = 100
@@ -115,7 +115,7 @@ resource "aws_instance" "control-plane" {
 
 # resource "aws_instance" "worker" {
 #   count         = length(var.worker_ips)
-#   ami           = var.fcos_ami
+#   ami           = var.RHCOS
 #   instance_type = "t3.large"
 #   subnet_id     = var.private_subnet_id
 #   private_ip    = var.worker_ips[count.index]
@@ -141,7 +141,7 @@ resource "null_resource" "finish_mgr" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file("${path.module}/privateKEY.tfvars")
+    private_key = file("privateKEY.tfvars")
     host        = aws_instance.manager.public_ip
   }
 
