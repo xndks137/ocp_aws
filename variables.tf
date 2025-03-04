@@ -38,14 +38,9 @@ variable "worker_ips" {
   default = ["192.168.128.50", "192.168.128.51"]
 }
 
-variable "FCOS" {
-  description = "Fedora CoreOS 39"
-  default = "ami-0e0a64c8b5d1bcd09"
-}
-
-variable "al2023" {
-  description = "Amazon Linux 2023"
-  default = "ami-075e056c0f3d02523"
+variable "ami_id" {
+  description = "RHCOS ami ID"
+  default = "ami-09cfc5a33f840ce70"
 }
 
 variable "dns_servers" {

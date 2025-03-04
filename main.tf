@@ -27,8 +27,7 @@ module "instances" {
   bootstrap_sg = module.network.bootstrap_sg_id
   master_sg = module.network.master_sg_id
   worker_sg = module.network.worker_sg_id
-  fcos_ami = var.FCOS
-  al2023_ami = var.al2023
+  ami = var.ami_id
   key_name = var.key_name
   pullSecret = var.pullSecret
   bootstrap_iam = module.iam.bootstrap_instance_profile_name

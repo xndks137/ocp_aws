@@ -218,8 +218,9 @@ resource "aws_security_group_rule" "worker_ingress_rules" {
 }
 
 resource "aws_eip" "nat_eip" {
-  vpc   = true
+  domain = "vpc"
 
+  depends_on = [ aws_internet_gateway.igw ]
   tags = {
     Name = "NAT-EIP"
   }
@@ -232,3 +233,4 @@ resource "aws_nat_gateway" "nat" {
   tags = {
     Name = "gw NAT"
   }
+}
