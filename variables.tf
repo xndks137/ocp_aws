@@ -54,5 +54,10 @@ variable "key_name" {
 }
 
 variable "pullSecret" {
- type = string
+  type = string
+}
+
+variable "instance_type" {
+  default = "m6i.xlarge"
+  description = "Instance type for create EC2"
 }

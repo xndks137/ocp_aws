@@ -7,8 +7,7 @@ variable "dns_ip" {}
 variable "bootstrap_ip" {}
 variable "control_plane_ips" {}
 variable "worker_ips" {}
-variable "fcos_ami" {}
-variable "al2023_ami" {}
+variable "ami" {}
 variable "pub_sg" {}
 variable "bootstrap_sg" {}
 variable "master_sg" {}
@@ -18,3 +17,4 @@ variable "pullSecret" {}
 variable "bootstrap_iam" {}
 variable "master_iam" {}
 variable "worker_iam" {}
+variable "instance_type" {}

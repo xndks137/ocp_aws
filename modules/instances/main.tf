@@ -1,27 +1,27 @@
-resource "aws_instance" "dns" {
-  ami           = var.al2023_ami
-  instance_type = "t3.small"
-  subnet_id     = var.public_subnet_id
-  private_ip    = var.dns_ip
-  security_groups = [ var.pub_sg ]
-  key_name = var.key_name
+# resource "aws_instance" "dns" {
+#   ami           = var.ami
+#   instance_type = "t3.small"
+#   subnet_id     = var.public_subnet_id
+#   private_ip    = var.dns_ip
+#   security_groups = [ var.pub_sg ]
+#   key_name = var.key_name
 
-  root_block_device {
-    volume_size = 8
-    volume_type = "gp3"
-  }
+#   root_block_device {
+#     volume_size = 8
+#     volume_type = "gp3"
+#   }
 
-  user_data = base64encode(file("${path.module}/template/dns.tpl"))
+#   user_data = base64encode(file("${path.module}/template/dns.tpl"))
 
-  tags = {
-    Name = "okd-dns"
-  }
-}
+#   tags = {
+#     Name = "okd-dns"
+#   }
+# }
 
 resource "aws_instance" "lb" {
-  depends_on = [ aws_instance.dns ]
-  ami           = var.al2023_ami
-  instance_type = "t3.small"
+
+  ami           = var.ami
+  instance_type = var.instance_type
   subnet_id     = var.public_subnet_id
   private_ip    = var.lb_ip
   security_groups = [ var.pub_sg ]
@@ -32,7 +32,10 @@ resource "aws_instance" "lb" {
     volume_type = "gp3"
   }
 
-  user_data = base64encode(file("${path.module}/template/lb.tpl"))
+  user_data = base64encode(templatefile("${path.module}/template/lb.tpl", {
+    clustername = "okd4",
+    zonename = "xndks.xyz"
+  }))
 
   tags = {
     Name = "okd-lb"
@@ -40,9 +43,9 @@ resource "aws_instance" "lb" {
 }
 
 resource "aws_instance" "manager" {
-  depends_on = [ aws_instance.dns ]
-  ami           = var.al2023_ami
-  instance_type = "t3.small"
+
+  ami           = var.ami
+  instance_type = var.instance_type
   subnet_id     = var.public_subnet_id
   private_ip    = var.manager_ip
   security_groups = [ var.pub_sg ]
@@ -63,8 +66,8 @@ resource "aws_instance" "manager" {
 }
 
 resource "aws_instance" "bootstrap" {
-  ami           = var.fcos_ami
-  instance_type = "t3.xlarge"
+  ami           = var.ami
+  instance_type = var.instance_type
   subnet_id     = var.private_subnet_id
   private_ip    = var.bootstrap_ip
   security_groups = [ var.bootstrap_sg ]
@@ -82,13 +85,13 @@ resource "aws_instance" "bootstrap" {
     Name = "bootstrap"
   }
 
-  depends_on = [ aws_instance.dns , null_resource.finish_mgr ]
+  depends_on = [ null_resource.finish_mgr ]
 }
 
 resource "aws_instance" "control-plane" {
   count         = length(var.control_plane_ips)
-  ami           = var.fcos_ami
-  instance_type = "t3.xlarge"
+  ami           = var.ami
+  instance_type = var.instance_type
   subnet_id     = var.private_subnet_id
   private_ip    = var.control_plane_ips[count.index]
   security_groups = [ var.master_sg ]
@@ -106,7 +109,7 @@ resource "aws_instance" "control-plane" {
     Name = "control-plane-${count.index + 1}"
   }
   
-  depends_on = [ aws_instance.dns , null_resource.finish_mgr ]
+  depends_on = [ null_resource.finish_mgr ]
 
 }
 
@@ -138,7 +141,7 @@ resource "null_resource" "finish_mgr" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file("${path.module}/privateKEY")
+    private_key = file("${path.module}/privateKEY.tfvars")
     host        = aws_instance.manager.public_ip
   }
 

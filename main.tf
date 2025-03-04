@@ -33,5 +33,6 @@ module "instances" {
   bootstrap_iam = module.iam.bootstrap_instance_profile_name
   master_iam = module.iam.master_instance_profile_name
   worker_iam = module.iam.worker_instance_profile_name
+  instance_type = var.instance_type
 }
 

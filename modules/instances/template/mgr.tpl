@@ -25,24 +25,24 @@ sudo systemctl enable --now nginx
 sudo systemctl restart nginx
 
 export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+
 sudo networkctl renew $INTERFACE
 
 # OKD 설치 준비비
-mkdir /home/ec2-user/okd4
-cd /home/ec2-user/okd4
+mkdir okd4
+cd okd4
 
-wget https://github.com/okd-project/okd-scos/releases/download/4.17.0-okd-scos.3/openshift-client-linux-4.17.0-okd-scos.3.tar.gz
-tar -xvf openshift-client-linux-4.17.0-okd-scos.3.tar.gz
-sudo mv oc kubectl /usr/local/bin
-oc adm release extract --tools quay.io/okd/scos-release:4.17.0-okd-scos.3
-rm -f ccoctl-linux-* openshift-client-linux-* release.txt sha256sum.txt
-tar -xvf openshift-install-linux-4.17.0-okd-scos.3.tar.gz
-rm -f openshift-install-linux-4.17.0-okd-scos.3.tar.gz README.md
-ssh-keygen -t ed25519 -N '' -f /home/ec2-user/.ssh/id_ed25519
+wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-install-linux.tar.gz
+tar -xvf openshift-install-linux.tar.gz
+wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
+tar -xvf openshift-client-linux.tar.gz
+sudo oc kubectl /usr/local/bin
+rm -f openshift-install-linux.tar.gz README.md openshift-client-linux.tar.gz 
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 mkdir ignition
 cat << EOF > ignition/install-config.yaml
 apiVersion: v1
-baseDomain: cluster.local
+baseDomain: xndks.xyz
 compute:
 - hyperthreading: Enabled
   name: worker
@@ -65,7 +65,7 @@ platform:
 pullSecret: '${pullSecret}'
 EOF
 
-echo -n "sshKey: '$(cat /home/ec2-user/.ssh/id_ed25519.pub)'" ; >> ignition/install-config.yaml
+echo -n "sshKey: '$(cat ~/.ssh/id_ed25519.pub)'" ; >> ignition/install-config.yaml
 cp ignition/install-config.yaml install-config.yaml.bak
 ./openshift-install create manifests --dir ignition
 ./openshift-install create ignition-configs --dir ignition
@@ -74,6 +74,3 @@ sudo cp ./ignition/{bootstrap.ign,master.ign,worker.ign} /usr/share/nginx/html/f
 sudo chmod 644 /usr/share/nginx/html/files/{bootstrap.ign,master.ign,worker.ign}
 
 touch /tmp/user_data_complete
-
-export KUBECONFIG=/home/ec2-user/okd4/ignition/auth/kubeconfig
-echo 'export KUBECONFIG=/home/ec2-user/okd4/ignition/auth/kubeconfig' >> ~/.bashrc
