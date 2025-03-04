@@ -73,7 +73,7 @@ sudo mkdir /usr/share/nginx/html/files
 sudo cp ./ignition/{bootstrap.ign,master.ign,worker.ign} /usr/share/nginx/html/files
 sudo chmod 644 /usr/share/nginx/html/files/{bootstrap.ign,master.ign,worker.ign}
 
-export KUBECONFIG=/okd4/ignition/auth/kubeconfig
 echo 'export KUBECONFIG=/okd4/ignition/auth/kubeconfig' >> ~/.bashrc
+source ~/.bashrc
 
 touch /tmp/user_data_complete
