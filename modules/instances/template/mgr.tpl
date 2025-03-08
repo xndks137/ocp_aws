@@ -2,7 +2,7 @@
 
 export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
 
-sudo dnf install -y nginx
+sudo dnf install -y nginx httpd-tools
 
 # 웹 설정정
 cat << EOF > /etc/nginx/conf.d/files.conf
@@ -83,3 +83,7 @@ sudo update-ca-trust extract
 EOF
 
 chmod +x /home/ec2-user/certificate.sh
+htpasswd -c -B -b users.htpasswd admin admin
+chown ec2-user.ec2-user users.htpasswd
+mv users.htpasswd /home/ec2-user/
+
