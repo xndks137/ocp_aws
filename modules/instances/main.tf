@@ -170,7 +170,7 @@ resource "null_resource" "finish_dns" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = var.ec2_ssh_key
+    private_key = file(var.ec2_ssh_key)
     host        = aws_instance.dns.public_ip
   }
 
@@ -188,7 +188,7 @@ resource "null_resource" "finish_mgr" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = var.ec2_ssh_key
+    private_key = file(var.ec2_ssh_key)
     host        = aws_instance.manager.public_ip
   }
 

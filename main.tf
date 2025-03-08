@@ -41,7 +41,7 @@ module "instances" {
   server_instance = var.server_instance
   cluster_name = var.cluster_name
   domain_name = var.domain_name
-  ec2_ssh_key = var.ec2_ssh_key
+  ec2_ssh_key = var.ec2_key_file
 }
 
 module "nfs_server" {
