@@ -21,3 +21,4 @@ variable "ocp_instance" {}
 variable "server_instance" {}
 variable "cluster_name" {}
 variable "domain_name" {}
+variable "ec2_ssh_key" {}

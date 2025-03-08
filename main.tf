@@ -41,12 +41,13 @@ module "instances" {
   server_instance = var.server_instance
   cluster_name = var.cluster_name
   domain_name = var.domain_name
+  ec2_ssh_key = var.ec2_ssh_key
 }
 
 module "nfs_server" {
   source = "./modules/storage"  # 모듈 경로 지정
-  vpc_id              = var.vpc_cidr
-  subnet_id           = var.private_subnet_cidr
+  vpc_id              = module.network.vpc_id
+  subnet_id           = module.network.private_subnet_id
   key_name            = var.key_name
   instance_type       = var.server_instance
   data_volume_size    = 200

@@ -49,6 +49,10 @@ variable "key_name" {
 variable "pullSecret" {
   type = string
 }
+variable "ec2_ssh_key" {
+  description = "SSH private key for EC2 instance"
+  type = string
+}
 variable "ocp_instance" {
   default = "m6i.xlarge"
   description = "Instance type for create OCP"
