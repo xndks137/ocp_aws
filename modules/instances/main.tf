@@ -1,30 +1,58 @@
-# resource "aws_instance" "dns" {
-#   ami           = var.ami
-#   instance_type = "t3.small"
-#   subnet_id     = var.public_subnet_id
-#   private_ip    = var.dns_ip
-#   security_groups = [ var.pub_sg ]
-#   key_name = var.key_name
+resource "aws_instance" "dns" {
+  ami           = var.AL2023
+  instance_type = var.server_instance
+  subnet_id     = var.public_subnet_id
+  private_ip    = var.dns_ip
+  security_groups = [ var.dns_sg ]
+  key_name = var.key_name
 
-#   root_block_device {
-#     volume_size = 8
-#     volume_type = "gp3"
-#   }
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
 
-#   user_data = base64encode(file("${path.module}/template/dns.tpl"))
+  user_data = base64encode(templatefile("${path.module}/template/dns.tpl", {
+    domain_name= var.domain_name,
+    cluster_name=var.cluster_name,
+    dns_ip=var.dns_ip,
+    lb_ip=var.lb_ip,
+    bootstrap_ip=var.bootstrap_ip,
+    control0_ip=var.control_plane_ips[0],
+    control1_ip =var.control_plane_ips[1],
+    control2_ip=var.control_plane_ips[2],
+    worker0_ip = var.worker_ips[0],
+    worker1_ip = var.worker_ips[1],
+    worker2_ip = var.worker_ips[2]
+  }))
 
-#   tags = {
-#     Name = "okd-dns"
-#   }
-# }
+  tags = {
+    Name = "${var.cluster_name}-dns"
+  }
+}
+
+resource "aws_vpc_dhcp_options" "okd_dns_resolver" {
+  domain_name_servers = [var.dns_ip]
+  domain_name = "${var.cluster_name}.${var.domain_name}"
+
+  tags = {
+    Name = "ocp-dns"
+  }
+}
+
+resource "aws_vpc_dhcp_options_association" "okd_dns_resolver" {
+  vpc_id          = var.vpc_id
+  dhcp_options_id = aws_vpc_dhcp_options.okd_dns_resolver.id
+
+  depends_on = [ null_resource.finish_dns ]
+}
 
 resource "aws_instance" "lb" {
-
+depends_on = [ aws_vpc_dhcp_options_association.okd_dns_resolver ]
   ami           = var.AL2023
-  instance_type = var.instance_type
+  instance_type = var.server_instance
   subnet_id     = var.public_subnet_id
   private_ip    = var.lb_ip
-  security_groups = [ var.pub_sg ]
+  security_groups = [ var.lb_sg ]
   key_name = var.key_name
 
   root_block_device {
@@ -33,26 +61,31 @@ resource "aws_instance" "lb" {
   }
 
   user_data = base64encode(templatefile("${path.module}/template/lb.tpl", {
-    clustername = "okd4",
-    zonename = "xndks.xyz"
+    domain_name = var.domain_name,
+    cluster_name = var.cluster_name
   }))
 
   tags = {
-    Name = "okd-lb"
+    Name = "${var.cluster_name}-lb"
   }
+
 }
 
 resource "aws_instance" "manager" {
-
+depends_on = [ aws_vpc_dhcp_options_association.okd_dns_resolver ]
   ami           = var.AL2023
-  instance_type = var.instance_type
+  instance_type = var.server_instance
   subnet_id     = var.public_subnet_id
   private_ip    = var.manager_ip
-  security_groups = [ var.pub_sg ]
+  security_groups = [ var.manager_sg ]
   key_name = var.key_name
 
   user_data = base64encode(templatefile("${path.module}/template/mgr.tpl", {
-    pullSecret = var.pullSecret
+    domain_name = var.domain_name,
+    cluster_name = var.cluster_name,
+    pullSecret = var.pullSecret,
+    control_count = length(var.control_plane_ips),
+    worker_count = length(var.worker_ips)
   }))
 
   root_block_device {
@@ -61,20 +94,20 @@ resource "aws_instance" "manager" {
   }
 
   tags = {
-    Name = "okd-manager"
+    Name = "${var.cluster_name}-manager"
   }
 }
 
 resource "aws_instance" "bootstrap" {
+depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
   ami           = var.RHCOS
-  instance_type = var.instance_type
+  instance_type = var.ocp_instance
   subnet_id     = var.private_subnet_id
   private_ip    = var.bootstrap_ip
   security_groups = [ var.bootstrap_sg ]
   key_name = var.key_name
-  iam_instance_profile = var.bootstrap_iam
 
-  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}:8080/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"http://${var.manager_ip}:8080/bootstrap.ign\"}},\"version\":\"3.1.0\"}}"
 
   root_block_device {
     volume_size = 100
@@ -82,23 +115,21 @@ resource "aws_instance" "bootstrap" {
   }
 
   tags = {
-    Name = "bootstrap"
+    Name = "${var.cluster_name}-bootstrap"
   }
-
-  depends_on = [ null_resource.finish_mgr ]
 }
 
 resource "aws_instance" "control-plane" {
+  depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
   count         = length(var.control_plane_ips)
   ami           = var.RHCOS
-  instance_type = var.instance_type
+  instance_type = var.ocp_instance
   subnet_id     = var.private_subnet_id
   private_ip    = var.control_plane_ips[count.index]
   security_groups = [ var.master_sg ]
   key_name = var.key_name
-  iam_instance_profile = var.master_iam
 
-  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}:8080/master.ign\"}},\"version\":\"3.1.0\"}}"
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"http://${var.manager_ip}:8080/master.ign\"}},\"version\":\"3.1.0\"}}"
 
   root_block_device {
     volume_size = 100
@@ -106,34 +137,50 @@ resource "aws_instance" "control-plane" {
   }
 
   tags = {
-    Name = "control-plane-${count.index + 1}"
+    Name = "${var.cluster_name}-control-plane-${count.index + 1}"
   }
-  
-  depends_on = [ null_resource.finish_mgr ]
 
 }
 
-# resource "aws_instance" "worker" {
-#   count         = length(var.worker_ips)
-#   ami           = var.RHCOS
-#   instance_type = "t3.large"
-#   subnet_id     = var.private_subnet_id
-#   private_ip    = var.worker_ips[count.index]
-#   security_groups = [ var.worker_sg ]
-#   key_name = var.key_name
-#   iam_instance_profile = var.worker_iam
+resource "aws_instance" "worker" {
+depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
+  count         = length(var.worker_ips)
+  ami           = var.RHCOS
+  instance_type = var.ocp_instance
+  subnet_id     = var.private_subnet_id
+  private_ip    = var.worker_ips[count.index]
+  security_groups = [ var.worker_sg ]
+  key_name = var.key_name
 
-#   root_block_device {
-#     volume_size = 100
-#     volume_type = "gp3"
-#   }
+  root_block_device {
+    volume_size = 100
+    volume_type = "gp3"
+  }
 
-#   user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"${var.manager_ip}/worker.ign\"}},\"version\":\"3.1.0\"}}"
+  user_data = "{\"ignition\":{\"config\":{\"replace\":{\"source\":\"http://${var.manager_ip}:8080/worker.ign\"}},\"version\":\"3.1.0\"}}"
 
-#   tags = {
-#     Name = "worker-${count.index + 1}"
-#   }
-# }
+  tags = {
+    Name = "${var.cluster_name}-worker-${count.index + 1}"
+  }
+}
+
+resource "null_resource" "finish_dns" {
+  depends_on = [aws_instance.dns]
+
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("privateKEY.tfvars")
+    host        = aws_instance.dns.public_ip
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "while [ ! -f /tmp/user_data_complete ]; do sleep 10; done",
+      "echo 'User data script completed'"
+    ]
+  }
+}
 
 resource "null_resource" "finish_mgr" {
   depends_on = [aws_instance.manager]

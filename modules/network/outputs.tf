@@ -10,8 +10,16 @@ output "private_subnet_id" {
   value = aws_subnet.private.id
 }
 
-output "pub_sg_id" {
-  value = aws_security_group.pub_sg.id
+output "mgr_sg_id" {
+  value = aws_security_group.manager.id
+}
+
+output "lb_sg_id" {
+  value = aws_security_group.lb.id
+}
+
+output "dns_sg_id" {
+  value = aws_security_group.dns.id
 }
 
 output "bootstrap_sg_id" {

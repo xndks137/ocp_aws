@@ -1,6 +1,9 @@
-module "iam" {
-  source = "./modules/IAM"
-  cluster_name = "okd4"
+module "route53" {
+  source = "./modules/route53"
+  cluster_name = var.cluster_name
+  zone_id = var.zone_id
+  domain_name = var.domain_name
+  lb_public_ip = module.instances.lb_public_ip
 }
 
 module "network" {
@@ -9,7 +12,8 @@ module "network" {
   public_subnet_cidr = var.public_subnet_cidr
   private_subnet_cidr = var.private_subnet_cidr
   region = var.region
-  dns_servers = var.dns_servers
+  domain_name = var.domain_name
+  cluster_name = var.cluster_name
 }
 
 module "instances" {
@@ -23,7 +27,9 @@ module "instances" {
   bootstrap_ip = var.bootstrap_ip
   control_plane_ips = var.control_plane_ips
   worker_ips = var.worker_ips
-  pub_sg = module.network.pub_sg_id
+  manager_sg = module.network.mgr_sg_id
+  lb_sg = module.network.lb_sg_id
+  dns_sg = module.network.dns_sg_id
   bootstrap_sg = module.network.bootstrap_sg_id
   master_sg = module.network.master_sg_id
   worker_sg = module.network.worker_sg_id
@@ -31,17 +37,23 @@ module "instances" {
   AL2023 = var.AL2023
   key_name = var.key_name
   pullSecret = var.pullSecret
-  bootstrap_iam = module.iam.bootstrap_instance_profile_name
-  master_iam = module.iam.master_instance_profile_name
-  worker_iam = module.iam.worker_instance_profile_name
-  instance_type = var.instance_type
-}
-
-module "route53" {
-  source = "./modules/route53"
+  ocp_instance = var.ocp_instance
+  server_instance = var.server_instance
   cluster_name = var.cluster_name
-  zone_id = var.zone_id
-  zone_name = var.zone_name
-  lb_public_ip = module.instances.lb_public_ip
+  domain_name = var.domain_name
 }
 
+module "nfs_server" {
+  source = "./modules/storage"  # 모듈 경로 지정
+  vpc_id              = var.vpc_cidr
+  subnet_id           = var.private_subnet_cidr
+  key_name            = var.key_name
+  instance_type       = var.server_instance
+  data_volume_size    = 200
+  cluster_name = var.cluster_name
+  ami_id = var.AL2023
+  nfs_ip = var.nfs_ip
+  nfs_share_path = var.nfs_share_path
+  vpc_cidr = var.vpc_cidr
+  pri_sub_cidr = var.private_subnet_cidr
+}
