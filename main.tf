@@ -50,7 +50,7 @@ module "nfs_server" {
   subnet_id           = module.network.private_subnet_id
   key_name            = var.key_name
   instance_type       = var.server_instance
-  data_volume_size    = 200
+  data_volume_size    = var.data_volume_size
   cluster_name = var.cluster_name
   ami_id = var.AL2023
   nfs_ip = var.nfs_ip

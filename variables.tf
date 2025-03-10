@@ -73,3 +73,6 @@ variable "domain_name" {
 variable "nfs_share_path" {
   default = "/data/nfs-ocp"
 }
+variable "data_volume_size" {
+  default = 200
+}
