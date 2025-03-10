@@ -50,10 +50,6 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main.id
-  route {
-    cidr_block = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
-  }
 
   tags = {
     Name = "${var.cluster_name}-private-rt"
@@ -84,6 +80,9 @@ resource "aws_security_group" "manager" {
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    Name = "${var.cluster_name}-manager-sg"
+  }
 }
 
 # LB 보안그룹
@@ -93,59 +92,55 @@ resource "aws_security_group" "lb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ingress {
-  #   from_port   = 8080
-  #   to_port     = 8080
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  # ingress {
-  #   from_port   = 80
-  #   to_port     = 80
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  # ingress {
-  #   from_port   = 443
-  #   to_port     = 443
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  # ingress {
-  #   from_port   = 6443
-  #   to_port     = 6443
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
+  ingress {
+    from_port   = 22623
+    to_port     = 22623
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  # ingress {
-  #   from_port   = 22623
-  #   to_port     = 22623
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
-
-  # ingress {
-  #   from_port   = 22
-  #   to_port     = 22
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${var.cluster_name}-lb-sg"
   }
 }
 
@@ -155,24 +150,24 @@ resource "aws_security_group" "dns" {
   description = "Security group for DNS node"
   vpc_id      = aws_vpc.main.id
 
-  # ingress {
-  #   from_port   = 53
-  #   to_port     = 53
-  #   protocol    = "udp"
-  #   cidr_blocks = [var.vpc_cidr]
-  # }
-
-  # ingress {
-  #   from_port   = 53
-  #   to_port     = 53
-  #   protocol    = "tcp"
-  #   cidr_blocks = [var.vpc_cidr]
-  # }
+  ingress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -182,6 +177,9 @@ resource "aws_security_group" "dns" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    Name = "${var.cluster_name}-dns-sg"
+  }
 }
 
 
@@ -189,13 +187,6 @@ resource "aws_security_group" "bootstrap" {
   name_prefix   = "bootstrap-sg-"
   description   = "Cluster Bootstrap Security Group"
   vpc_id        = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [ var.vpc_cidr ]
-  }
 
   ingress {
     from_port   = 22
@@ -217,19 +208,15 @@ resource "aws_security_group" "bootstrap" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    Name = "${var.cluster_name}-bootstrap-sg"
+  }
 }
 
 resource "aws_security_group" "master" {
   name_prefix = "master-sg-"
   description = "Cluster Master Security Group"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
-  }
 
   ingress {
     from_port   = 22
@@ -258,19 +245,16 @@ resource "aws_security_group" "master" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = "${var.cluster_name}-master-sg"
+  }
 }
 
 resource "aws_security_group" "worker" {
   name_prefix = "worker-sg-"
   description = "Cluster Worker Security Group"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
-  }
 
   ingress {
     from_port   = 22
@@ -284,6 +268,9 @@ resource "aws_security_group" "worker" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${var.cluster_name}-worker-sg"
   }
 }
 
@@ -304,21 +291,4 @@ resource "aws_security_group_rule" "master_ingress_rules" {
   protocol                 = each.value.protocol
   source_security_group_id = aws_security_group.master.id
   security_group_id        = aws_security_group.master.id
-}
-
-resource "aws_eip" "nat_eip" {
-  domain = "vpc"
-
-  tags = {
-    Name = "${var.cluster_name}-NAT-EIP"
-  }
-}
-
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat_eip.id
-  subnet_id     = aws_subnet.public.id
-
-  tags = {
-    Name = "${var.cluster_name}-gw-NAT"
-  }
 }

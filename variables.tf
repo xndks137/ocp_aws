@@ -29,10 +29,10 @@ variable "worker_ips" {
   default = ["192.168.128.50", "192.168.128.51", "192.168.128.52"]
 }
 variable "nfs_ip" {
-  default = "192.168.128.70"
+  default = "192.168.128.100"
 }
 variable "db_ips" {
-  default = ["192.168.128.71"]
+  default = ["192.168.128.110", "192.168.128.111"]
 }
 variable "RHCOS" {
   description = "RHCOS ami ID"
@@ -58,7 +58,7 @@ variable "ocp_instance" {
   description = "Instance type for create OCP"
 }
 variable "server_instance" {
-  default = "m6i.xlarge"
+  default = "m6i.large"
   description = "Instance type for create servers"
 }
 variable "zone_id" {
@@ -75,4 +75,16 @@ variable "nfs_share_path" {
 }
 variable "data_volume_size" {
   default = 200
+}
+variable "aws_cidr_block" {
+  description = "AWS CIDR 블록"
+  type        = string
+}
+variable "aws_vpc_id" {
+  description = "AWS VPC id"
+  type        = string
+}
+variable "route_table_id" {
+  description = "VGW 라우팅 전파를 활성화할 라우팅 테이블 ID"
+  type        = string
 }

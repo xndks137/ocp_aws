@@ -33,3 +33,7 @@ output "master_sg_id" {
 output "worker_sg_id" {
   value = aws_security_group.worker.id
 } 
+
+output "private_rt_id" {
+  value = aws_route_table.private_rt.id
+}

@@ -99,7 +99,7 @@ depends_on = [ aws_vpc_dhcp_options_association.okd_dns_resolver ]
 }
 
 resource "aws_instance" "bootstrap" {
-depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
+  depends_on = [ null_resource.finish_mgr, var.sgw_instance_id ]
   ami           = var.RHCOS
   instance_type = var.ocp_instance
   subnet_id     = var.private_subnet_id
@@ -120,7 +120,7 @@ depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
 }
 
 resource "aws_instance" "control-plane" {
-  depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
+  depends_on = [ null_resource.finish_mgr, var.sgw_instance_id ]
   count         = length(var.control_plane_ips)
   ami           = var.RHCOS
   instance_type = var.ocp_instance
@@ -143,7 +143,7 @@ resource "aws_instance" "control-plane" {
 }
 
 resource "aws_instance" "worker" {
-depends_on = [ null_resource.finish_dns, null_resource.finish_mgr ]
+  depends_on = [ null_resource.finish_mgr, var.sgw_instance_id ]
   count         = length(var.worker_ips)
   ami           = var.RHCOS
   instance_type = var.ocp_instance

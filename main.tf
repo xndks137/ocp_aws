@@ -16,6 +16,20 @@ module "network" {
   cluster_name = var.cluster_name
 }
 
+module "security_gateway" {
+  source = "./modules/security_gateway"
+  vpc_id = module.network.vpc_id
+  vpc_cidr_block = var.vpc_cidr
+  public_subnet_id = module.network.public_subnet_id
+  private_route_table_ids = [module.network.private_rt_id]
+  ami_id = var.AL2023
+  instance_type = var.server_instance
+  key_name = var.key_name
+  local_cidr_block = var.aws_cidr_block
+  route_table_id = var.route_table_id
+  aws_vpc_id = var.aws_vpc_id
+}
+
 module "instances" {
   source = "./modules/instances"
   vpc_id = module.network.vpc_id
@@ -42,9 +56,11 @@ module "instances" {
   cluster_name = var.cluster_name
   domain_name = var.domain_name
   ec2_ssh_key = var.ec2_key_file
+  sgw_instance_id = module.security_gateway.sgw_instance_id
 }
 
 module "nfs_server" {
+  depends_on = [ module.security_gateway ]
   source = "./modules/storage"  # 모듈 경로 지정
   vpc_id              = module.network.vpc_id
   subnet_id           = module.network.private_subnet_id

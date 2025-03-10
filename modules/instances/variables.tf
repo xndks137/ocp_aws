@@ -22,3 +22,4 @@ variable "server_instance" {}
 variable "cluster_name" {}
 variable "domain_name" {}
 variable "ec2_ssh_key" {}
+variable "sgw_instance_id" {}
