@@ -1,5 +1,5 @@
 #!/bin/bash
-# NAT 및 VPN 인스턴스 설정 스크립트 (Amazon Linux 2023용 - strongSwan 사용)
+# NAT 및 VPN 인스턴스 설정 스크립트 (Amazon Linux 2023용 - Libreswan 사용)
 
 # 변수 설정
 LOCAL_IP="${local_ip}"                 # 인스턴스의 프라이빗 IP
@@ -8,7 +8,8 @@ LOCAL_CIDR="${local_cidr}"             # 온프레미스/내부 CIDR 블록
 REMOTE_CIDR="${remote_cidr}"           # AWS VPC CIDR 블록
 TUNNEL1_ADDRESS="${tunnel1_address}"   # AWS에서 제공하는 터널1 외부 IP
 TUNNEL2_ADDRESS="${tunnel2_address}"   # AWS에서 제공하는 터널2 외부 IP
-PRESHARED_KEY="${preshared_key}"       # 사전 공유 키
+PRESHARED_KEY1="${preshared_key1}"       # 사전 공유 키1
+PRESHARED_KEY2="${preshared_key2}"       # 사전 공유 키2
 TUNNEL1_INSIDE_CIDR="${tunnel1_inside_cidr}" # 터널1 내부 CIDR
 TUNNEL2_INSIDE_CIDR="${tunnel2_inside_cidr}" # 터널2 내부 CIDR
 
@@ -18,7 +19,7 @@ dnf update -y
 
 # 필요한 패키지 설치
 echo "필요한 패키지 설치 중..."
-dnf install -y strongswan iptables-services tcpdump
+dnf install -y libreswan firewalld tcpdump
 
 # 호스트명 설정
 hostnamectl --static set-hostname NAT-VPN-Instance
@@ -54,73 +55,71 @@ systemctl enable iptables
 systemctl start iptables
 service iptables save
 
-# VPN 설정 (strongSwan)
+sudo firewall-cmd --list-all-zone
+sudo firewall-cmd --permanent --zone=public --add-masquerade 
+sudo firewall-cmd --permanent --set-target=ACCEPT
+sudo firewall-cmd --reload 
+
+# VPN 설정 (Libreswan)
 echo "VPN 설정 구성 중..."
 
-# strongSwan 기본 설정 파일 백업
-mv /etc/strongswan/ipsec.conf /etc/strongswan/ipsec.conf.bak
-mv /etc/strongswan/ipsec.secrets /etc/strongswan/ipsec.secrets.bak
-
-# strongSwan 설정 파일 생성
-cat > /etc/strongswan/ipsec.conf << EOF
-config setup
-    charondebug="all"
-    uniqueids=yes
-    strictcrlpolicy=no
-
-# 터널 1 설정
+# IPsec 설정 파일 생성
+cat > /etc/ipsec.d/aws-vpn.conf << EOF
 conn tunnel1
-    authby=secret
     auto=start
-    keyexchange=ikev2
+    authby=secret
+    type=tunnel
+    ike=aes128-sha256;modp2048
+    ikelifetime=8h
+    phase2=esp
+    phase2alg=aes128-sha256;modp2048
+    salifetime=1h
     left=%defaultroute
     leftid=$LOCAL_PUBLIC_IP
     leftsubnet=$LOCAL_CIDR
     right=$TUNNEL1_ADDRESS
     rightsubnet=$REMOTE_CIDR
-    ike=aes128-sha256-modp2048
-    esp=aes128-sha256-modp2048
-    keyingtries=0
-    ikelifetime=1h
-    lifetime=8h
-    dpddelay=30
-    dpdtimeout=120
+    dpddelay=10
+    dpdtimeout=30
     dpdaction=restart
-    type=tunnel
-    fragmentation=yes
-    forceencaps=yes
+    mark="10"
+    vti-interface=vti1
+    vti-routing=no
+    vti-shared=no
+    ikev2=no
 
-# 터널 2 설정
 conn tunnel2
-    authby=secret
     auto=start
-    keyexchange=ikev2
+    authby=secret
+    type=tunnel
+    ike=aes128-sha256;modp2048
+    ikelifetime=8h
+    phase2=esp
+    phase2alg=aes128-sha256;modp2048
+    salifetime=1h
     left=%defaultroute
     leftid=$LOCAL_PUBLIC_IP
     leftsubnet=$LOCAL_CIDR
     right=$TUNNEL2_ADDRESS
     rightsubnet=$REMOTE_CIDR
-    ike=aes128-sha256-modp2048
-    esp=aes128-sha256-modp2048
-    keyingtries=0
-    ikelifetime=1h
-    lifetime=8h
-    dpddelay=30
-    dpdtimeout=120
+    dpddelay=10
+    dpdtimeout=30
     dpdaction=restart
-    type=tunnel
-    fragmentation=yes
-    forceencaps=yes
+    mark="20"
+    vti-interface=vti2
+    vti-routing=no
+    vti-shared=no
+    ikev2=no
 EOF
 
 # 사전 공유 키 설정
-cat > /etc/strongswan/ipsec.secrets << EOF
-$LOCAL_PUBLIC_IP $TUNNEL1_ADDRESS : PSK "$PRESHARED_KEY"
-$LOCAL_PUBLIC_IP $TUNNEL2_ADDRESS : PSK "$PRESHARED_KEY"
+cat > /etc/ipsec.d/aws-vpn.secrets << EOF
+$LOCAL_PUBLIC_IP $TUNNEL1_ADDRESS: PSK "$PRESHARED_KEY1"
+$LOCAL_PUBLIC_IP $TUNNEL2_ADDRESS: PSK "$PRESHARED_KEY2"
 EOF
 
 # 파일 권한 설정
-chmod 600 /etc/strongswan/ipsec.secrets
+chmod 600 /etc/ipsec.d/aws-vpn.secrets
 
 # VTI 인터페이스 설정
 cat > /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh << EOF
@@ -148,9 +147,9 @@ EOF
 
 chmod +x /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
 
-# strongSwan 서비스 활성화 및 시작
-systemctl enable strongswan
-systemctl start strongswan
+# IPsec 서비스 활성화 및 시작
+systemctl enable ipsec
+systemctl start ipsec
 
 # VTI 인터페이스 설정 실행
 /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
@@ -206,8 +205,8 @@ service iptables save
 # VTI 인터페이스 설정
 /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
 
-# strongSwan 재시작
-systemctl restart strongswan
+# IPsec 재시작
+systemctl restart ipsec
 
 echo "\$(date): NAT-VPN 설정이 재적용되었습니다." >> /var/log/nat-vpn-setup.log
 EOF
@@ -237,8 +236,8 @@ cat > /usr/local/bin/test-vpn-connection.sh << EOF
 # VPN 연결 테스트 스크립트
 
 echo "VPN 연결 테스트 중..."
-echo "1. strongSwan 상태 확인:"
-strongswan status
+echo "1. IPsec 상태 확인:"
+ipsec status | grep -E "tunnel[12]"
 
 echo "2. VTI 인터페이스 상태:"
 ip addr show vti1

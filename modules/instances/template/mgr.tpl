@@ -1,8 +1,5 @@
 #!/bin/bash
 
-export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
-sudo networkctl renew $INTERFACE
-
 sudo dnf install -y nginx httpd-tools git
 
 # 웹 설정정
@@ -33,10 +30,12 @@ cd /home/ec2-user/ocp4
 
 wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-install-linux.tar.gz
 tar -xvf openshift-install-linux.tar.gz
+sudo mv openshift-install /usr/local/bin/
+rm -f openshift-install-linux.tar.gz README.md
 wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz
 tar -xvf openshift-client-linux.tar.gz
-sudo mv oc kubectl openshift-install /usr/local/bin/
-rm -f openshift-install-linux.tar.gz README.md openshift-client-linux.tar.gz
+sudo mv oc kubectl /usr/local/bin/
+rm -f openshift-client-linux.tar.gz
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 mkdir ignition
 cat << EOF > ignition/install-config.yaml
@@ -72,21 +71,16 @@ chown ec2-user.ec2-user -R /home/ec2-user/ocp4
 sudo mkdir /usr/share/nginx/html/files
 sudo cp /home/ec2-user/ocp4/ignition/{bootstrap.ign,master.ign,worker.ign} /usr/share/nginx/html/files
 sudo chmod 644 /usr/share/nginx/html/files/{bootstrap.ign,master.ign,worker.ign}
-touch /tmp/user_data_complete
 
 echo 'export KUBECONFIG=/home/ec2-user/ocp4/ignition/auth/kubeconfig' >> /home/ec2-user/.bashrc
 oc completion bash > oc_bash_completion
 cp oc_bash_completion /etc/bash_completion.d/
-cat << EOF | tee /home/ec2-user/certificate.sh
-oc rsh -n openshift-authentication $(oc get pods -n openshift-authentication -o jsonpath='{.items[0].metadata.name}') cat /run/secrets/kubernetes.io/serviceaccount/ca.crt > ingress-ca.crt
-sudo cp ingress-ca.crt /usr/share/pki/ca-trust-source/anchors/
-sudo update-ca-trust extract
-EOF
-
-chmod +x /home/ec2-user/certificate.sh
 
 htpasswd -c -B -b users.htpasswd admin admin
 mv users.htpasswd /usr/share/nginx/html/files/
 
 
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+sudo networkctl renew $INTERFACE
 
+touch /tmp/user_data_complete

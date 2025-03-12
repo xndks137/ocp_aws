@@ -91,7 +91,8 @@ resource "aws_instance" "sgw_instance" {
     remote_cidr         = var.local_cidr_block
     tunnel1_address     = aws_vpn_connection.sgw_vpn.tunnel1_address
     tunnel2_address     = aws_vpn_connection.sgw_vpn.tunnel2_address
-    preshared_key       = aws_vpn_connection.sgw_vpn.tunnel1_preshared_key
+    preshared_key1       = aws_vpn_connection.sgw_vpn.tunnel1_preshared_key
+    preshared_key2       = aws_vpn_connection.sgw_vpn.tunnel2_preshared_key
     tunnel1_inside_cidr = aws_vpn_connection.sgw_vpn.tunnel1_inside_cidr
     tunnel2_inside_cidr = aws_vpn_connection.sgw_vpn.tunnel2_inside_cidr
   })

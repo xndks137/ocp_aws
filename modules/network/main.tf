@@ -151,16 +151,9 @@ resource "aws_security_group" "dns" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "tcp"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = [var.vpc_cidr]
   }
 
@@ -177,6 +170,7 @@ resource "aws_security_group" "dns" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = {
     Name = "${var.cluster_name}-dns-sg"
   }
@@ -189,17 +183,10 @@ resource "aws_security_group" "bootstrap" {
   vpc_id        = aws_vpc.main.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = [ var.vpc_cidr ]
-  }
-
-  ingress {
-    from_port   = 19531
-    to_port     = 19531
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -208,6 +195,7 @@ resource "aws_security_group" "bootstrap" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = {
     Name = "${var.cluster_name}-bootstrap-sg"
   }
@@ -219,24 +207,10 @@ resource "aws_security_group" "master" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 6443
-    to_port     = 6443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 22623
-    to_port     = 22623
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [ var.vpc_cidr ]
   }
 
   egress {
@@ -257,10 +231,10 @@ resource "aws_security_group" "worker" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [ var.vpc_cidr ]
   }
 
   egress {

@@ -31,6 +31,7 @@ module "security_gateway" {
 }
 
 module "instances" {
+  depends_on = [ module.security_gateway ]
   source = "./modules/instances"
   vpc_id = module.network.vpc_id
   public_subnet_id = module.network.public_subnet_id
