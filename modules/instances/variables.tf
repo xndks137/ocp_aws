@@ -6,7 +6,9 @@ variable "lb_ip" {}
 variable "dns_ip" {}
 variable "bootstrap_ip" {}
 variable "control_plane_ips" {}
+variable "control_plane_count" {}
 variable "worker_ips" {}
+variable "worker_count" {}
 variable "RHCOS" {}
 variable "AL2023" {}
 variable "manager_sg" {}
@@ -20,6 +22,7 @@ variable "pullSecret" {}
 variable "ocp_instance" {}
 variable "server_instance" {}
 variable "cluster_name" {}
+variable "name" {}
 variable "domain_name" {}
 variable "ec2_ssh_key" {}
 variable "sgw_instance_id" {}

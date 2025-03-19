@@ -1,7 +1,6 @@
 variable "name" {
   description = "리소스 이름 접두사"
   type        = string
-  default     = "ocp"
 }
 
 variable "vpc_id" {
@@ -19,9 +18,14 @@ variable "public_subnet_id" {
   type        = string
 }
 
-variable "private_route_table_ids" {
-  description = "NAT 라우팅을 위한 프라이빗 라우트 테이블 ID 목록"
-  type        = list(string)
+variable "private_route_table_id" {
+  description = "NAT, VPN 라우팅을 위한 프라이빗 라우트 테이블 ID"
+  type        = string
+}
+
+variable "public_route_table_id" {
+  description = "VPN 라우팅을 위한 퍼블릭 라우트 테이블 ID"
+  type        = string
 }
 
 variable "ami_id" {
@@ -50,9 +54,9 @@ variable "local_cidr_block" {
   type        = string
 }
 
-variable "route_table_id" {
+variable "route_table_ids" {
   description = "VGW 라우팅 전파를 활성화할 라우팅 테이블 ID"
-  type        = string
+  type        = list(string)
 }
 
 variable "aws_vpc_id" {

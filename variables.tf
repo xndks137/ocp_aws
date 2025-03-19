@@ -25,8 +25,16 @@ variable "bootstrap_ip" {
 variable "control_plane_ips" {
   default = ["192.168.128.10", "192.168.128.11", "192.168.128.12"]
 }
+variable "master_count" {
+  description = "마스터노드 갯수"
+  type = number
+}
 variable "worker_ips" {
   default = ["192.168.128.50", "192.168.128.51", "192.168.128.52"]
+}
+variable "worker_count" {
+  description = "워커노드 갯수"
+  type = number
 }
 variable "nfs_ip" {
   default = "192.168.128.100"
@@ -58,6 +66,7 @@ variable "ocp_instance" {
   description = "Instance type for create OCP"
 }
 variable "server_instance" {
+  # default = "t3.medium"
   default = "m6i.large"
   description = "Instance type for create servers"
 }
@@ -84,7 +93,10 @@ variable "aws_vpc_id" {
   description = "AWS VPC id"
   type        = string
 }
-variable "route_table_id" {
+variable "route_table_ids" {
   description = "VGW 라우팅 전파를 활성화할 라우팅 테이블 ID"
-  type        = string
+  type        = list(string)
+}
+variable "project_name" {
+  default = "OCP"
 }

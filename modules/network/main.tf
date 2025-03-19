@@ -1,14 +1,14 @@
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
   tags = {
-    Name = "${var.cluster_name}-vpc"
+    Name = "${var.name}-vpc"
   }
 }
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "${var.cluster_name}-igw"
+    Name = "${var.name}-igw"
   }
 }
 
@@ -18,7 +18,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
   availability_zone = "${var.region}a"
   tags = {
-    Name = "${var.cluster_name}-public-subnet"
+    Name = "${var.name}-public-subnet"
   }
 }
 
@@ -27,7 +27,7 @@ resource "aws_subnet" "private" {
   cidr_block = var.private_subnet_cidr
   availability_zone = "${var.region}a"
   tags = {
-    Name = "${var.cluster_name}-private-subnet"
+    Name = "${var.name}-private-subnet"
   }
 }
 
@@ -39,7 +39,7 @@ resource "aws_route_table" "public_rt" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-public-rt"
+    Name = "${var.name}-public-rt"
   }
 }
 
@@ -52,7 +52,7 @@ resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "${var.cluster_name}-private-rt"
+    Name = "${var.name}-private-rt"
   }
 }
 
@@ -68,10 +68,17 @@ resource "aws_security_group" "manager" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     from_port = 0
     to_port = 0
     protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -81,7 +88,7 @@ resource "aws_security_group" "manager" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    Name = "${var.cluster_name}-manager-sg"
+    Name = "${var.name}-manager-sg"
   }
 }
 
@@ -126,11 +133,18 @@ resource "aws_security_group" "lb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # ingress {
+  #   from_port   = 22
+  #   to_port     = 22
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
+
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [ var.vpc_cidr ]
   }
 
   egress {
@@ -140,7 +154,7 @@ resource "aws_security_group" "lb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    Name = "${var.cluster_name}-lb-sg"
+    Name = "${var.name}-lb-sg"
   }
 }
 
@@ -157,12 +171,12 @@ resource "aws_security_group" "dns" {
     cidr_blocks = [var.vpc_cidr]
   }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ingress {
+  #   from_port   = 22
+  #   to_port     = 22
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   egress {
     from_port   = 0
@@ -172,7 +186,7 @@ resource "aws_security_group" "dns" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-dns-sg"
+    Name = "${var.name}-dns-sg"
   }
 }
 
@@ -197,7 +211,7 @@ resource "aws_security_group" "bootstrap" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-bootstrap-sg"
+    Name = "${var.name}-bootstrap-sg"
   }
 }
 
@@ -221,7 +235,7 @@ resource "aws_security_group" "master" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-master-sg"
+    Name = "${var.name}-master-sg"
   }
 }
 
@@ -244,7 +258,7 @@ resource "aws_security_group" "worker" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    Name = "${var.cluster_name}-worker-sg"
+    Name = "${var.name}-worker-sg"
   }
 }
 

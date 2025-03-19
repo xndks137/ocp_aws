@@ -13,20 +13,22 @@ module "network" {
   private_subnet_cidr = var.private_subnet_cidr
   region = var.region
   domain_name = var.domain_name
-  cluster_name = var.cluster_name
+  name = var.project_name
 }
 
 module "security_gateway" {
   source = "./modules/security_gateway"
   vpc_id = module.network.vpc_id
+  name = var.project_name
   vpc_cidr_block = var.vpc_cidr
   public_subnet_id = module.network.public_subnet_id
-  private_route_table_ids = [module.network.private_rt_id]
+  private_route_table_id = module.network.private_rt_id
+  public_route_table_id = module.network.public_rt_id
   ami_id = var.AL2023
   instance_type = var.server_instance
   key_name = var.key_name
   local_cidr_block = var.aws_cidr_block
-  route_table_id = var.route_table_id
+  route_table_ids = var.route_table_ids
   aws_vpc_id = var.aws_vpc_id
 }
 
@@ -54,10 +56,13 @@ module "instances" {
   pullSecret = var.pullSecret
   ocp_instance = var.ocp_instance
   server_instance = var.server_instance
+  name = var.project_name
   cluster_name = var.cluster_name
   domain_name = var.domain_name
   ec2_ssh_key = var.ec2_key_file
   sgw_instance_id = module.security_gateway.sgw_instance_id
+  control_plane_count = var.master_count
+  worker_count = var.worker_count
 }
 
 module "nfs_server" {

@@ -1,6 +1,6 @@
 #!/bin/bash
 # NAT 및 VPN 인스턴스 설정 스크립트 (Amazon Linux 2023용 - Libreswan 사용)
-
+echo "qwe123" | sudo passwd ec2-user --stdin
 # 변수 설정
 LOCAL_IP="${local_ip}"                 # 인스턴스의 프라이빗 IP
 LOCAL_PUBLIC_IP="${local_public_ip}"   # 인스턴스의 퍼블릭 IP(EIP)
@@ -20,6 +20,8 @@ dnf update -y
 # 필요한 패키지 설치
 echo "필요한 패키지 설치 중..."
 dnf install -y libreswan firewalld tcpdump
+systemctl enable --now ipsec
+systemctl enable --now firewalld
 
 # 호스트명 설정
 hostnamectl --static set-hostname NAT-VPN-Instance
@@ -51,14 +53,14 @@ iptables -A FORWARD -i $PRIMARY_NIC -o $PRIMARY_NIC -m state --state RELATED,EST
 iptables -A FORWARD -j ACCEPT
 
 # iptables 설정 저장
-systemctl enable iptables
-systemctl start iptables
-service iptables save
 
-sudo firewall-cmd --list-all-zone
-sudo firewall-cmd --permanent --zone=public --add-masquerade 
+systemctl enable --now firewalld
+sudo firewall-cmd --permanent --zone=public --add-masquerade
+sudo firewall-cmd --permanent --zone=public --add-service=ipsec
+sudo firewall-cmd --permanent --zone=public --add-service=ssh
 sudo firewall-cmd --permanent --set-target=ACCEPT
 sudo firewall-cmd --reload 
+systemctl restart firewalld
 
 # VPN 설정 (Libreswan)
 echo "VPN 설정 구성 중..."
@@ -82,14 +84,17 @@ conn tunnel1
     dpddelay=10
     dpdtimeout=30
     dpdaction=restart
-    mark="10"
+    mark=10/0xffffffff
     vti-interface=vti1
-    vti-routing=no
+    vti-routing=yes
     vti-shared=no
-    ikev2=no
-
+    # leftvti=$(echo $TUNNEL1_INSIDE_CIDR | cut -d'/' -f1)/32
+    # encapsulation=yes
+    ikev2=insist
+    
 conn tunnel2
-    auto=start
+    # tunnel2는 백업으로 사용하고, 하나만 활성화
+    auto=add
     authby=secret
     type=tunnel
     ike=aes128-sha256;modp2048
@@ -100,16 +105,18 @@ conn tunnel2
     left=%defaultroute
     leftid=$LOCAL_PUBLIC_IP
     leftsubnet=$LOCAL_CIDR
-    right=$TUNNEL2_ADDRESS
+    right=$TUNNEL1_ADDRESS
     rightsubnet=$REMOTE_CIDR
     dpddelay=10
     dpdtimeout=30
     dpdaction=restart
-    mark="20"
+    mark=20/0xffffffff
     vti-interface=vti2
-    vti-routing=no
+    vti-routing=yes
     vti-shared=no
-    ikev2=no
+    # leftvti=$(echo $TUNNEL2_INSIDE_CIDR | cut -d'/' -f1)/32
+    # encapsulation=yes
+    ikev2=insist
 EOF
 
 # 사전 공유 키 설정
@@ -121,35 +128,32 @@ EOF
 # 파일 권한 설정
 chmod 600 /etc/ipsec.d/aws-vpn.secrets
 
-# VTI 인터페이스 설정
+# VTI 인터페이스 설정 (간소화)
 cat > /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh << EOF
 #!/bin/bash
 # VTI 인터페이스 설정 스크립트
 
 # 터널 1 설정
-ip tunnel add vti1 mode vti local $LOCAL_IP remote $TUNNEL1_ADDRESS key 10
-ip addr add $(echo $TUNNEL1_INSIDE_CIDR | sed 's/\/30/\/32/') dev vti1
-ip link set vti1 up
-ip link set vti1 mtu 1400
-sysctl -w net.ipv4.conf.vti1.disable_policy=1
+sudo ip tunnel add vti1 mode vti local $LOCAL_IP remote $TUNNEL1_ADDRESS key 10
+sudo ip addr add $(echo $TUNNEL1_INSIDE_CIDR | sed 's/\/30/\/32/') dev vti1
+sudo ip link set vti1 up
+sudo ip link set vti1 mtu 1400
+sudo sysctl -w net.ipv4.conf.vti1.disable_policy=1
 
 # 터널 2 설정
-ip tunnel add vti2 mode vti local $LOCAL_IP remote $TUNNEL2_ADDRESS key 20
-ip addr add $(echo $TUNNEL2_INSIDE_CIDR | sed 's/\/30/\/32/') dev vti2
-ip link set vti2 up
-ip link set vti2 mtu 1400
-sysctl -w net.ipv4.conf.vti2.disable_policy=1
+sudo ip tunnel add vti2 mode vti local $LOCAL_IP remote $TUNNEL2_ADDRESS key 20
+sudo ip addr add $(echo $TUNNEL2_INSIDE_CIDR | sed 's/\/30/\/32/') dev vti2
+sudo ip link set vti2 up
+sudo ip link set vti2 mtu 1400
+sudo sysctl -w net.ipv4.conf.vti2.disable_policy=1
 
 # 라우팅 설정
-ip route add $REMOTE_CIDR dev vti1 metric 100
-ip route add $REMOTE_CIDR dev vti2 metric 200
+sudo ip route add $REMOTE_CIDR dev vti1 metric 100
+sudo ip route add $REMOTE_CIDR dev vti2 metric 200
 EOF
 
 chmod +x /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
 
-# IPsec 서비스 활성화 및 시작
-systemctl enable ipsec
-systemctl start ipsec
 
 # VTI 인터페이스 설정 실행
 /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
@@ -200,7 +204,7 @@ iptables -A FORWARD -i \$PRIMARY_NIC -o \$PRIMARY_NIC -m state --state RELATED,E
 iptables -A FORWARD -j ACCEPT
 
 # iptables 설정 저장
-service iptables save
+systemctl restart firewalld
 
 # VTI 인터페이스 설정
 /etc/NetworkManager/dispatcher.d/pre-up.d/ipsec-vti.sh
@@ -271,3 +275,9 @@ echo "설정 완료 시간: $(date)" >> /var/log/nat-vpn-setup.log
 echo "NAT 및 VPN 설정이 완료되었습니다. 자세한 내용은 /var/log/nat-vpn-setup.log 파일을 확인하세요."
 echo "VPN 트래픽을 캡처하려면 '/usr/local/bin/capture-vpn-traffic.sh' 명령을 실행하세요."
 echo "VPN 연결을 테스트하려면 '/usr/local/bin/test-vpn-connection.sh' 명령을 실행하세요."
+
+systemctl restart ipsec
+systemctl restart firewalld
+
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+sudo networkctl renew $INTERFACE

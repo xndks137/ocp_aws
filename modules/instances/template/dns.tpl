@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo "qwe123" | sudo passwd ec2-user --stdin
 
 sudo dnf install -y bind bind-utils
 
@@ -46,7 +46,7 @@ EOF
 # named.conf 수정
 sudo sed -i 's/listen-on port 53 { 127.0.0.1; };/listen-on port 53 { any; };/g' /etc/named.conf
 sudo sed -i 's/listen-on-v6 port 53 { ::1; };/listen-on-v6 port 53 { any; };/g' /etc/named.conf
-sudo sed -i 's/allow-query     { localhost; };/allow-query     { any; };/g' /etc/named.conf
+sudo sed -i 's/allow-query     { localhost; };/allow-query     { any; };\n\tforwarders { 10.0.32.4; 10.0.48.4; };/g' /etc/named.conf
 
 sudo chown root.named /var/named/${domain_name}.zone
 

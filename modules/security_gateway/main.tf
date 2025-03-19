@@ -4,6 +4,14 @@ resource "aws_security_group" "sgw_sg" {
   description = "Security group for NAT and VPN instance"
   vpc_id      = var.vpc_id
 
+  # ingress {
+  #   description = "Allow all traffic for test"
+  #   from_port   = 0
+  #   to_port     = 0
+  #   protocol    = "-1"
+  #   cidr_blocks = [ "0.0.0.0/0"]
+  # }
+
   # 내부 네트워크에서 오는 모든 트래픽 허용
   ingress {
     description = "Allow all traffic from VPC"
@@ -40,13 +48,13 @@ resource "aws_security_group" "sgw_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    description = "Allow SSH access"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ingress {
+  #   description = "Allow SSH access"
+  #   from_port   = 22
+  #   to_port     = 22
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   # 모든 아웃바운드 트래픽 허용
   egress {
@@ -68,7 +76,7 @@ resource "aws_network_interface" "sgw_eni" {
   source_dest_check = false
 
   tags = {
-    Name = "${var.name}-sgw-eni"
+    Name = "${var.name}-eni"
   }
 }
 
@@ -112,17 +120,22 @@ resource "aws_eip" "sgw_eip" {
 }
 
 # Route from private subnets to NAT instance
-resource "aws_route" "private_sgw_route" {
-  count                  = length(var.private_route_table_ids)
-  route_table_id         = var.private_route_table_ids[count.index]
+resource "aws_route" "sgw_private_route" {
+  route_table_id         = var.private_route_table_id
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_network_interface.sgw_eni.id
 }
+resource "aws_route" "sgw_public_route" {
+  route_table_id         = var.public_route_table_id
+  destination_cidr_block = "10.0.0.0/16"
+  network_interface_id   = aws_network_interface.sgw_eni.id
+}
+
 
 ######################  VPN 부분  ############################
 # Customer Gateway
 resource "aws_customer_gateway" "sgw_cgw" {
-  ip_address = aws_eip.sgw_eip.public_ip  # 인스턴스의 EIP 사용
+  ip_address = aws_eip.sgw_eip.public_ip
   type       = "ipsec.1"
   
   tags = {
@@ -163,7 +176,8 @@ resource "aws_vpn_connection_route" "vpn_routes" {
 
 # VPC routing table propagation
 resource "aws_vpn_gateway_route_propagation" "vpn_route_propagation" {
-  
+  count = length(var.route_table_ids)
   vpn_gateway_id = aws_vpn_gateway.sgw_vgw.id
-  route_table_id = var.route_table_id
+  route_table_id = var.route_table_ids[count.index]
 }
+

@@ -7,3 +7,7 @@ output "nfs_share_path" {
   description = "The path of the NFS share"
   value       = module.nfs_server.nfs_share_path
 }
+
+output "manager_ip" {
+  value = module.instances.manager_ip
+}
