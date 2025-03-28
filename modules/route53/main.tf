@@ -3,5 +3,5 @@ resource "aws_route53_record" "all_apps_record" {
   name    = "*.apps.${var.cluster_name}.${var.domain_name}"
   type    = "A"
   ttl     = 300
-  records = [ var.lb_public_ip ]
+  records = [var.lb_public_ip]
 }

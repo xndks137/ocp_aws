@@ -12,6 +12,15 @@ resource "aws_security_group" "sgw_sg" {
   #   cidr_blocks = [ "0.0.0.0/0"]
   # }
 
+  # VPN에서 오는 모든 트래픽 허용
+  ingress {
+    description = "Allow all traffic from VPC"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+
   # 내부 네트워크에서 오는 모든 트래픽 허용
   ingress {
     description = "Allow all traffic from VPC"
@@ -48,14 +57,6 @@ resource "aws_security_group" "sgw_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ingress {
-  #   description = "Allow SSH access"
-  #   from_port   = 22
-  #   to_port     = 22
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
-
   # 모든 아웃바운드 트래픽 허용
   egress {
     from_port   = 0
@@ -71,8 +72,9 @@ resource "aws_security_group" "sgw_sg" {
 
 # Network Interface for the instance
 resource "aws_network_interface" "sgw_eni" {
-  subnet_id       = var.public_subnet_id
-  security_groups = [aws_security_group.sgw_sg.id]
+  subnet_id         = var.public_subnet_id
+  private_ips       = [var.nat_ip]
+  security_groups   = [aws_security_group.sgw_sg.id]
   source_dest_check = false
 
   tags = {
@@ -82,28 +84,16 @@ resource "aws_network_interface" "sgw_eni" {
 
 # NAT/VPN Instance
 resource "aws_instance" "sgw_instance" {
-  depends_on = [ aws_vpn_connection.sgw_vpn ]
+  depends_on    = [aws_network_interface.sgw_eni]
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
-
   network_interface {
     network_interface_id = aws_network_interface.sgw_eni.id
     device_index         = 0
   }
 
-  user_data = templatefile("${path.module}/sgw_setup.sh.tpl", {
-    local_ip            = aws_network_interface.sgw_eni.private_ip
-    local_public_ip     = aws_eip.sgw_eip.public_ip
-    local_cidr          = var.vpc_cidr_block
-    remote_cidr         = var.local_cidr_block
-    tunnel1_address     = aws_vpn_connection.sgw_vpn.tunnel1_address
-    tunnel2_address     = aws_vpn_connection.sgw_vpn.tunnel2_address
-    preshared_key1       = aws_vpn_connection.sgw_vpn.tunnel1_preshared_key
-    preshared_key2       = aws_vpn_connection.sgw_vpn.tunnel2_preshared_key
-    tunnel1_inside_cidr = aws_vpn_connection.sgw_vpn.tunnel1_inside_cidr
-    tunnel2_inside_cidr = aws_vpn_connection.sgw_vpn.tunnel2_inside_cidr
-  })
+  user_data = file("${path.module}/sgw_setup.sh")
 
   tags = {
     Name = "${var.name}-sgw"
@@ -112,8 +102,9 @@ resource "aws_instance" "sgw_instance" {
 
 # Elastic IP for the instance
 resource "aws_eip" "sgw_eip" {
+  depends_on        = [aws_network_interface.sgw_eni]
   network_interface = aws_network_interface.sgw_eni.id
-  
+
   tags = {
     Name = "${var.name}-sgw-eip"
   }
@@ -125,59 +116,9 @@ resource "aws_route" "sgw_private_route" {
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_network_interface.sgw_eni.id
 }
-resource "aws_route" "sgw_public_route" {
-  route_table_id         = var.public_route_table_id
-  destination_cidr_block = "10.0.0.0/16"
-  network_interface_id   = aws_network_interface.sgw_eni.id
-}
 
-
-######################  VPN 부분  ############################
-# Customer Gateway
-resource "aws_customer_gateway" "sgw_cgw" {
-  ip_address = aws_eip.sgw_eip.public_ip
-  type       = "ipsec.1"
-  
-  tags = {
-    Name = "${var.name}-cgw"
-  }
-}
-
-# Virtual Private Gateway
-resource "aws_vpn_gateway" "sgw_vgw" {
-  
-  tags = {
-    Name = "${var.name}-vgw"
-  }
-}
-
-resource "aws_vpn_gateway_attachment" "vpn_attachment" {
-  vpc_id         = var.aws_vpc_id
-  vpn_gateway_id = aws_vpn_gateway.sgw_vgw.id
-}
-
-# Site-to-Site VPN Connection
-resource "aws_vpn_connection" "sgw_vpn" {
-  vpn_gateway_id      = aws_vpn_gateway.sgw_vgw.id
-  customer_gateway_id = aws_customer_gateway.sgw_cgw.id
-  type                = "ipsec.1"
-  static_routes_only  = var.static_routes_only
-  
-  tags = {
-    Name = "${var.name}-vpn-connection"
-  }
-}
-
-# Static routes for VPN (if enabled)
-resource "aws_vpn_connection_route" "vpn_routes" {  
-  destination_cidr_block = var.vpc_cidr_block
-  vpn_connection_id      = aws_vpn_connection.sgw_vpn.id
-}
-
-# VPC routing table propagation
-resource "aws_vpn_gateway_route_propagation" "vpn_route_propagation" {
-  count = length(var.route_table_ids)
-  vpn_gateway_id = aws_vpn_gateway.sgw_vgw.id
-  route_table_id = var.route_table_ids[count.index]
-}
-
+# resource "aws_route" "sgw_public_route" {
+#   route_table_id         = var.public_route_table_id
+#   destination_cidr_block = "10.0.0.0/16"
+#   network_interface_id   = aws_network_interface.sgw_eni.id
+# }

@@ -48,18 +48,4 @@ variable "static_routes_only" {
   type        = bool
   default     = true
 }
-
-variable "local_cidr_block" {
-  description = "로컬(AWS) CIDR 블록 목록"
-  type        = string
-}
-
-variable "route_table_ids" {
-  description = "VGW 라우팅 전파를 활성화할 라우팅 테이블 ID"
-  type        = list(string)
-}
-
-variable "aws_vpc_id" {
-  description = "AWS VPC ID"
-  type        = string
-}
+variable "nat_ip" {}

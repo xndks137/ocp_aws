@@ -1,9 +1,31 @@
 #!/bin/bash
-echo "qwe123" | sudo passwd ec2-user --stdin
-sudo dnf -y install haproxy mod_security
+
+sleep 1m
+
+sudo dnf -y update
+sudo dnf -y install haproxy docker
+sudo systemctl enable --now haproxy
+sudo systemctl enable --now docker
+
+# modsecurity-spoa 설치
+docker run -d -p 12345:12345 --name modsec quay.io/jcmoraisjr/modsecurity-spoa -n 2
+
+cat << EOF | sudo tee /etc/haproxy/spoe-modsecurity.conf
+[modsecurity]
+spoe-agent modsecurity-agent
+    messages     check-request
+    option       var-prefix  modsec
+    timeout      hello       100ms
+    timeout      idle        30s
+    timeout      processing  1s
+    use-backend  spoe-modsecurity
+spoe-message check-request
+    args   unique-id method path query req.ver req.hdrs_bin req.body_size req.body
+    event  on-frontend-http-request
+EOF
 
 # 로드밸런스 설정정
-sudo cat << EOF | tee /etc/haproxy/haproxy.cfg
+sudo cat << EOF > /etc/haproxy/haproxy.cfg
 global
   log         127.0.0.1 local2
   pidfile     /var/run/haproxy.pid
@@ -58,40 +80,89 @@ listen ingress-router-443
   mode tcp
   balance source
   server control-plane0 control-plane0.${cluster_name}.${domain_name}:443 check inter 1s
-
-
-listen ingress-router-80 
-  bind *:80
-  mode tcp
-  balance source
-  server control-plane0 control-plane0.${cluster_name}.${domain_name}:80 check inter 1s
-
-EOF
   # server control-plane1 control-plane1.${cluster_name}.${domain_name}:80 check inter 1s
   # server control-plane2 control-plane2.${cluster_name}.${domain_name}:80 check inter 1s
   # server worker0 worker0.${cluster_name}.${domain_name}:80 check inter 1s
   # server worker1 worker1.${cluster_name}.${domain_name}:80 check inter 1s
   # server worker2 worker2.${cluster_name}.${domain_name}:80 check inter 1s
-sudo systemctl enable --now haproxy
+
+listen ingress-router-80
+  bind *:80
+  mode http
+  balance source
+  filter spoe engine modsecurity config /etc/haproxy/spoe-modsecurity.conf
+  http-request deny if { var(txn.modsec.code) -m int gt 0 }
+
+  server control-plane0 control-plane0.${cluster_name}.${domain_name}:80 check inter 1s
+  # server control-plane1 control-plane1.${cluster_name}.${domain_name}:80 check inter 1s
+  # server control-plane2 control-plane2.${cluster_name}.${domain_name}:80 check inter 1s
+  # server worker0 worker0.${cluster_name}.${domain_name}:80 check inter 1s
+  # server worker1 worker1.${cluster_name}.${domain_name}:80 check inter 1s
+  # server worker2 worker2.${cluster_name}.${domain_name}:80 check inter 1s
+
+backend spoe-modsecurity
+  mode tcp
+  server modsec-spoa1 127.0.0.1:12345
+
+listen mysql-write-3307
+  bind *:3307
+  mode tcp
+  server db0 db0.${cluster_name}.${domain_name}:3306 check inter 1s
+
+
+listen mysql-read-3306
+  bind *:3306
+  mode tcp
+  balance roundrobin
+  server db0 db0.${cluster_name}.${domain_name}:3306 check backup inter 1s
+  server db1 db1.${cluster_name}.${domain_name}:3306 check inter 1s
+
+
+listen gitea-3000
+  bind *:3000
+  mode tcp
+  server gitea gitea.${cluster_name}.${domain_name}:3000 check inter 1s
+
+EOF
+
+
 sudo systemctl restart haproxy
 
-sudo dnf install -y mod_security mod_security_crs
-cat << EOF >> /etc/httpd/conf/httpd.conf
+sudo useradd --no-create-home --shell /bin/false prometheus
 
-# 서버 정보 제거
-<IfModule security2_module>
-   SecRuleEngine on
-   ServerTokens Full
-   SecServerSignature "None"
-</IfModule>
-EOF
-cat <<EOF > /etc/httpd/modsecurity.d/activated_rules/custom_rule.conf
-SecDefaultAction "Phase:2,deny,log,status:406"
-secRule REQUEST_URI "etc/passwd" "id:'300001'"
-secRule REQUEST_URI "etc/shadow" "id:'300002'"
-secRule REQUEST_URI "\.\./" "id:'300003'"
-SecRule ARGS "<[Ss][Cc][Rr[Ii][Pp][Tt]>" "id:'300004'"
+# 노드 익스포터 다운로드
+wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
+tar -xvf node_exporter-1.9.0.linux-amd64.tar.gz 
+cd node_exporter-1.9.0.linux-amd64/
+
+# 실행 파일
+sudo mv node_exporter /usr/local/bin/
+sudo chown prometheus:prometheus /usr/local/bin/node_exporter 
+
+# 서비스 등록
+cat <<EOF | sudo tee /etc/systemd/system/node_exporter.service
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://prometheus.io/docs/guides/node-exporter/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Restart=on-failure
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-sudo systemctl enable --now httpd
-sudo systemctl restart httpd
+# 서비스 시작
+sudo systemctl daemon-reload
+sudo systemctl enable --now node_exporter
+sudo systemctl restart node_exporter
+sudo systemctl status node_exporter
+
+sleep 1m
+
+export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+sudo networkctl renew $INTERFACE

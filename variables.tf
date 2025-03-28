@@ -19,6 +19,9 @@ variable "lb_ip" {
 variable "dns_ip" {
   default = "192.168.10.30"
 }
+variable "monitor_ip" {
+  default = "192.168.10.40"
+}
 variable "bootstrap_ip" {
   default = "192.168.128.5"
 }
@@ -27,31 +30,31 @@ variable "control_plane_ips" {
 }
 variable "master_count" {
   description = "마스터노드 갯수"
-  type = number
+  type        = number
 }
 variable "worker_ips" {
-  default = ["192.168.128.50", "192.168.128.51", "192.168.128.52"]
+  default = ["192.168.128.30", "192.168.128.31", "192.168.128.32"]
 }
 variable "worker_count" {
   description = "워커노드 갯수"
-  type = number
+  type        = number
 }
 variable "nfs_ip" {
-  default = "192.168.128.100"
+  default = "192.168.128.50"
 }
 variable "db_ips" {
-  default = ["192.168.128.110", "192.168.128.111"]
+  default = ["192.168.128.60", "192.168.128.61"]
 }
 variable "RHCOS" {
   description = "RHCOS ami ID"
-  default = "ami-09cfc5a33f840ce70"
+  default     = "ami-09cfc5a33f840ce70"
 }
 variable "AL2023" {
   description = "Amazon Linux ami ID"
-  default = "ami-075e056c0f3d02523"
+  default     = "ami-075e056c0f3d02523"
 }
 variable "key_name" {
-  default = "okd_key_pair"
+  default     = "okd_key_pair"
   description = "Instance key pair"
 }
 variable "pullSecret" {
@@ -59,15 +62,15 @@ variable "pullSecret" {
 }
 variable "ec2_key_file" {
   description = "SSH private key for EC2 instance"
-  type = string
+  type        = string
 }
 variable "ocp_instance" {
-  default = "m6i.xlarge"
+  default     = "m6i.xlarge"
   description = "Instance type for create OCP"
 }
 variable "server_instance" {
-  # default = "t3.medium"
-  default = "m6i.large"
+  default = "t3.medium"
+  # default = "m6i.large"
   description = "Instance type for create servers"
 }
 variable "zone_id" {
@@ -83,20 +86,17 @@ variable "nfs_share_path" {
   default = "/data/nfs-ocp"
 }
 variable "data_volume_size" {
-  default = 200
-}
-variable "aws_cidr_block" {
-  description = "AWS CIDR 블록"
-  type        = string
-}
-variable "aws_vpc_id" {
-  description = "AWS VPC id"
-  type        = string
-}
-variable "route_table_ids" {
-  description = "VGW 라우팅 전파를 활성화할 라우팅 테이블 ID"
-  type        = list(string)
+  default = 100
 }
 variable "project_name" {
   default = "OCP"
+}
+variable "gitea_ip" {
+  default = "192.168.128.70"
+}
+variable "nat_ip" {
+  default = "192.168.10.1"
+}
+variable "waf_ip" {
+  default = "192.168.10.2"
 }

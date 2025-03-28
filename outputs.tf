@@ -11,3 +11,7 @@ output "nfs_share_path" {
 output "manager_ip" {
   value = module.instances.manager_ip
 }
+
+output "vpn_ip" {
+  value = module.security_gateway.sgw_public_ip
+}
