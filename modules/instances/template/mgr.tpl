@@ -13,7 +13,7 @@ LzxVE76EI2Z9f/MoSRVMuxsxWlPuBcGyD9P0Ux87c7UPAAAAAAECAwQF
 EOF
 
 sudo dnf update -y
-sudo dnf install -y nginx httpd-tools git
+sudo dnf install -y nginx httpd-tools git mariadb105
 
 # 웹 설정정
 cat << EOF | sudo tee /etc/nginx/conf.d/files.conf

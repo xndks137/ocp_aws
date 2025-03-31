@@ -49,7 +49,7 @@ sudo systemctl enable --now node_exporter
 sudo systemctl restart node_exporter
 sudo systemctl status node_exporter
 
-sleep 1m
+sleep 3m
 
 export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
 sudo networkctl renew $INTERFACE

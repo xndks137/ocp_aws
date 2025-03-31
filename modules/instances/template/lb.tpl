@@ -8,7 +8,16 @@ sudo systemctl enable --now haproxy
 sudo systemctl enable --now docker
 
 # modsecurity-spoa 설치
-docker run -d -p 12345:12345 --name modsec quay.io/jcmoraisjr/modsecurity-spoa -n 2
+sudo docker create --name modsec quay.io/jcmoraisjr/modsecurity-spoa
+sudo docker cp modsec:/etc/modsecurity .
+sudo docker rm modsec
+
+sudo sed -i 's/Include \/etc\/modsecurity\/owasp-modsecurity-crs\/rules\/REQUEST-920/#Include \/etc\/modsecurity\/owasp-modsecurity-crs\/rules\/REQUEST-920/' modsecurity/owasp-modsecurity-crs.conf
+sudo sed -i 's/Include \/etc\/modsecurity\/owasp-modsecurity-crs\/rules\/REQUEST-931/#Include \/etc\/modsecurity\/owasp-modsecurity-crs\/rules\/REQUEST-931/' modsecurity/owasp-modsecurity-crs.conf
+
+sudo docker run --rm -d -p 12345:12345 --name modsec -v /modsecurity:/etc/modsecurity quay.io/jcmoraisjr/modsecurity-spoa -n 2
+
+
 
 cat << EOF | sudo tee /etc/haproxy/spoe-modsecurity.conf
 [modsecurity]
@@ -125,9 +134,6 @@ listen gitea-3000
 
 EOF
 
-
-sudo systemctl restart haproxy
-
 sudo useradd --no-create-home --shell /bin/false prometheus
 
 # 노드 익스포터 다운로드
@@ -162,7 +168,9 @@ sudo systemctl enable --now node_exporter
 sudo systemctl restart node_exporter
 sudo systemctl status node_exporter
 
-sleep 1m
+sleep 2m
 
-export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
+export INTERFACE=$(netstat -i | awk 'NR==4 {print $1}')
 sudo networkctl renew $INTERFACE
+
+sudo systemctl restart haproxy

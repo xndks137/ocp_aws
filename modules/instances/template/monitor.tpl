@@ -101,7 +101,7 @@ EOF
 
 sudo systemctl restart prometheus
 
-sleep 1m
+sleep 3m
 
 export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
 sudo networkctl renew $INTERFACE

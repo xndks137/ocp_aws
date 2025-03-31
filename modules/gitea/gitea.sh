@@ -20,7 +20,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now gitea
 sudo systemctl status gitea
 
-sleep 1m
+sleep 3m
 
 export INTERFACE=$(netstat -i | awk 'NR==3 {print $1}')
 sudo networkctl renew $INTERFACE
