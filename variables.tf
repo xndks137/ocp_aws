@@ -60,7 +60,7 @@ variable "key_name" {
 variable "pullSecret" {
   type = string
 }
-variable "ec2_key_file" {
+variable "ec2_ssh_key" {
   description = "SSH private key for EC2 instance"
   type        = string
 }

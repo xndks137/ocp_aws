@@ -109,7 +109,6 @@ resource "aws_instance" "monitor" {
 }
 
 resource "aws_instance" "manager" {
-  # ami           = "ami-004ab59fd9ba73fac"
   ami             = var.AL2023
   instance_type   = var.server_instance
   subnet_id       = var.public_subnet_id
@@ -118,6 +117,7 @@ resource "aws_instance" "manager" {
   key_name        = var.key_name
 
   user_data = base64encode(templatefile("${path.module}/template/mgr.tpl", {
+    ec2_ssh_key   = var.ec2_ssh_key
     domain_name   = var.domain_name,
     cluster_name  = var.cluster_name,
     pullSecret    = var.pullSecret,
@@ -135,26 +135,6 @@ resource "aws_instance" "manager" {
   }
 }
 
-# resource "aws_instance" "waf" {
-#   ami             = var.AL2023
-#   instance_type   = var.server_instance
-#   subnet_id       = var.public_subnet_id
-#   private_ip      = var.waf_ip
-#   security_groups = [var.waf_sg]
-#   key_name        = var.key_name
-
-#   user_data = base64encode(file("${path.module}/template/waf.sh"))
-
-#   root_block_device {
-#     volume_size = 30
-#     volume_type = "gp3"
-#   }
-
-#   tags = {
-#     Name = "${var.name}-waf"
-#   }
-# }
-
 
 resource "null_resource" "finish_dns" {
   depends_on = [aws_instance.dns]
@@ -162,7 +142,7 @@ resource "null_resource" "finish_dns" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file(var.ec2_ssh_key)
+    private_key = var.ec2_ssh_key
     host        = aws_instance.dns.public_ip
   }
 
@@ -180,7 +160,7 @@ resource "null_resource" "finish_mgr" {
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file(var.ec2_ssh_key)
+    private_key = var.ec2_ssh_key
     host        = aws_instance.manager.public_ip
   }
 

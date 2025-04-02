@@ -53,7 +53,7 @@ module "instances" {
   name                = var.project_name
   cluster_name        = var.cluster_name
   domain_name         = var.domain_name
-  ec2_ssh_key         = var.ec2_key_file
+  ec2_ssh_key         = var.ec2_ssh_key
   control_plane_count = var.master_count
   worker_count        = var.worker_count
   nat_ip              = var.nat_ip
@@ -81,7 +81,7 @@ module "openshift" {
   name                = var.project_name
   cluster_name        = var.cluster_name
   domain_name         = var.domain_name
-  ec2_ssh_key         = var.ec2_key_file
+  ec2_ssh_key         = var.ec2_ssh_key
   control_plane_count = var.master_count
   worker_count        = var.worker_count
   finish_mgr          = module.instances.null_resource
