@@ -54,7 +54,6 @@ variable "AL2023" {
   default     = "ami-075e056c0f3d02523"
 }
 variable "key_name" {
-  default     = "okd_key_pair"
   description = "Instance key pair"
 }
 variable "pullSecret" {
@@ -74,13 +73,11 @@ variable "server_instance" {
   description = "Instance type for create servers"
 }
 variable "zone_id" {
-  default = "Z00953263JPNGDD7UHSTQ"
 }
 variable "cluster_name" {
   default = "ocp4"
 }
 variable "domain_name" {
-  default = "xndks.xyz"
 }
 variable "nfs_share_path" {
   default = "/data/nfs-ocp"
